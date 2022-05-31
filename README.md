@@ -1,4 +1,4 @@
-# Standalone
+# Standalone  
 Every sysrev is a composition of processes. /mvp was my first shot, but incomplete.
 
 ```
@@ -11,7 +11,7 @@ Every sysrev is a composition of processes. /mvp was my first shot, but incomple
 ├── sr.yaml # dag definition
 ```
 
-**sr.yaml**
+**sr.yaml**  
 A `sysrev` stream take a pubmed generator, prioritizes it, reviews it and sinks to sqlite. **[fifo](https://man7.org/linux/man-pages/man7/fifo.7.html)** may work for sharing process streams.
 ```yaml
 flows:
@@ -24,7 +24,7 @@ flows:
       - {cmd: "snk/sql.sh", deps: "rev.fifo", out: [sqlite.db]}
 ```
 
-**deploy**
+**deploy**  
 `sr review my-sysrev` runs the named flow by launching each process.
 ```
 > sr review sysrev
@@ -40,7 +40,7 @@ flows:
 # snk/sql.sh rev.fifo
 ```
 
-**thoughts**
+**thoughts**  
 1. Some review steps may start UI processes.
 2. A standard sink assigns a user+label+answer to a generator entity
 3. Generators could be reused anywhere (even non-sysrev applications)
