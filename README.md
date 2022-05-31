@@ -5,14 +5,14 @@ Every sysrev is a composition of processes. /mvp was my first shot, but incomple
 > tree -L 1 my-project
 .
 ├── .sr [/cache/, /config]
-├── gen/... # generates json-ld, no local dependencies
-├── flow/... # transform json-ld, depends on upstream gen+flow
-├── sink/... # serialize json-ld, depends on upstream gen+flow
+├── gen/...  # depends on nothing  , generates stream
+├── map/...  # depends on stream(s), generates stream
+├── sink/... # depends on stream(s), generates nothing
 ├── sr.yaml # dag definition
 ```
 
 **sr.yaml**
-A `sysrev` stream take a pubmed generator, prioritizes it, reviews it and sinks to sqlite.
+A `sysrev` stream take a pubmed generator, prioritizes it, reviews it and sinks to sqlite. **[fifo](https://man7.org/linux/man-pages/man7/fifo.7.html)** may work for sharing process streams.
 ```yaml
 flows:
   my-sysrev:
