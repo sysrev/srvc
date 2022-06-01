@@ -3,5 +3,8 @@
 }:
 with pkgs;
 mkShell {
-  buildInputs = [ babashka ];
+  buildInputs = [
+    babashka
+    sqlite
+  ];
 }
