@@ -1,3 +1,9 @@
+## Setup
+
+Install [babashka](https://github.com/babashka/babashka#installation) and SQLite.
+
+## Usage
+
 Review:
 
 ```
