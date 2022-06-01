@@ -1,4 +1,8 @@
 #!/usr/bin/env bb
 
-(doseq [i (range 1 101)]
-  (println (str "{\"i\":" i "}")))
+(require '[clojure.java.io :as io])
+
+(let [outfile (first *command-line-args*)]
+  (with-open [writer (io/writer outfile)]
+    (doseq [i (range 1 11)]
+      (.write writer (str "{\"i\":" i "}\n")))))
