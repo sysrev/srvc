@@ -1,0 +1,5 @@
+*.log
+
+.clj-kondo/
+.direnv/
+.lsp/
