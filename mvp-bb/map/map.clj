@@ -8,7 +8,8 @@
   (->> m
        json/generate-string
        (.write writer))
-  (.write writer "\n"))
+  (.write writer "\n")
+  (.flush writer))
 
 (let [[infile outfile] *command-line-args*]
   (with-open [writer (io/writer outfile)]

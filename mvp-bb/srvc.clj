@@ -20,7 +20,6 @@
         map-fifo (-> (fs/path dir "map.fifo") make-fifo str)
         map (process ["bb" "map/map.clj" gen-fifo map-fifo])
         sink (process ["bb" "sink/sink.clj" map-fifo "sink.db"])]
-    (.start (Thread. #(flush)))
     @sink))
 
 nil
