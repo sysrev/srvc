@@ -33,6 +33,12 @@
           (json/parse-string true)
           :FullStudiesResponse))))
 
+(defn nct-id [study]
+  (-> study :ProtocolSection :IdentificationModule :NCTId))
+
+(defn study-url [study]
+  (str "https://clinicaltrials.gov/ct2/show/" (nct-id study)))
+
 (print "ClinicalTrials.gov search:  ")
 (flush)
 
@@ -42,7 +48,9 @@
     (loop [min-rank 1]
       (let [{:keys [FullStudies MaxRank]} (search query min-rank)]
         (when (seq FullStudies)
-          (doseq [m FullStudies]
-            (.write writer (json/generate-string (:Study m)))
+          (doseq [{:keys [Study]} FullStudies]
+            (->> {:data Study :uri (study-url Study)}
+                 json/generate-string
+                 (.write writer))
             (.write writer "\n"))
           (recur (inc MaxRank)))))))

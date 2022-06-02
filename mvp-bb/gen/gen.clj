@@ -5,4 +5,4 @@
 (let [outfile (first *command-line-args*)]
   (with-open [writer (io/writer outfile)]
     (doseq [i (range 1 11)]
-      (.write writer (str "{\"i\":" i "}\n")))))
+      (.write writer (str "{\"data\":{\"i\":" i "}}\n")))))
