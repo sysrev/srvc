@@ -12,11 +12,11 @@
   (boolean
    (cond
      (not (fs/exists? db)) false
-     (seq uri) (->> ["select 1 from data where uri = ? limit 1" uri]
+     (seq uri) (->> ["select 1 from sr_data where uri = ? limit 1" uri]
                     (sqlite/query db)
                     first)
      :else
-     (->> ["select 1 from data where json = ? limit 1"
+     (->> ["select 1 from sr_data where json = ? limit 1"
            (json/generate-string data)]
           (sqlite/query db)
           first))))

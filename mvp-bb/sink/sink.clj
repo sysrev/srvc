@@ -8,8 +8,8 @@
 (require '[pod.babashka.go-sqlite3 :as sqlite])
 
 (def schema
-  ["create table if not exists data (json TEXT, uri TEXT)"
-   "create index if not exists data_uri on data (uri)"])
+  ["create table if not exists sr_data (json TEXT, uri TEXT)"
+   "create index if not exists sr_data_uri on sr_data (uri)"])
 
 (defn create-schema [db]
   (doseq [statement schema]
@@ -21,7 +21,7 @@
           (-> infile
               io/reader
               (json/parsed-seq true))]
-    (->> ["insert into data (json, uri) values (?, ?)"
+    (->> ["insert into sr_data (json, uri) values (?, ?)"
           (json/generate-string data)
           uri]
          (sqlite/execute! db))))

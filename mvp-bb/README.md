@@ -32,7 +32,7 @@ Include? [Y/n]  y
 
 Results:
 ```
-$ sqlite3 sink.db "select * from data"
+$ sqlite3 sink.db "select * from sr_data"
 {"i":1}
 {"i":2}
 {"i":6}
