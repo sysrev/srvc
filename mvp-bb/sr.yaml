@@ -1,0 +1,9 @@
+labels:
+  - id: organ
+    type: categorical
+    categories:
+      - heart/cardiovascular
+      - blood/serum
+      - other
+    question: Which organ was the focus?
+    required: true

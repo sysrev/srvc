@@ -11,17 +11,63 @@
   (.write writer "\n")
   (.flush writer))
 
-(let [[infile outfile] *command-line-args*]
+(defmulti read-answer :type)
+
+(defmethod read-answer "boolean"
+  [{:keys [question required]}]
+  (print question)
+  (print " ")
+  (loop []
+    (if required
+      (print "[Yes/No] ")
+      (print "[Yes/No/Skip] "))
+    (flush)
+    (let [response (-> (read-line) str/trim str/lower-case)]
+      (cond
+        (empty? response) (recur)
+        (str/starts-with? "yes" response) true
+        (str/starts-with? "no" response) false
+        (and required (str/starts-with? "skip" response)) nil
+        :else (recur)))))
+
+(defmethod read-answer "categorical"
+  [{:keys [categories question required]}]
+  (println question)
+  (let [categories (if required
+                     categories
+                     (into ["Skip Question"] categories))]
+    (doseq [[i cat] (map-indexed vector categories)]
+      (println (str (inc i) ". " cat)))
+    (loop []
+      (print "? ")
+      (flush)
+      (let [response (-> (read-line) str/trim parse-long)]
+        (cond
+          (not response) (recur)
+          (and (not required) (= 1 response)) nil
+          (<= 1 response (count categories)) (nth categories (dec response))
+          :else (recur))))))
+
+(defn read-answers [labels]
+  (loop [answers {}
+         [{:keys [id inclusion-values] :as label} & more] labels]
+    (let [answer (read-answer label)
+          answers (assoc answers id answer)]
+      (println)
+      (if (or (empty? more)
+              (and (seq inclusion-values)
+                   (not (some (partial = answer) inclusion-values))))
+        answers
+        (recur answers more)))))
+
+(let [[config-file infile outfile] *command-line-args*
+      {:keys [labels]} (json/parse-string (slurp config-file) true)]
   (with-open [writer (io/writer outfile)]
     (doseq [m (-> infile
                   io/reader
                   (json/parsed-seq true))]
-      (prn m)
-      (print "Include? [Y/n]  ")
-      (flush)
-      (loop []
-        (let [input (str/lower-case (read-line))]
-          (case input
-            "n" nil
-            "y" (write-json writer m)
-            (recur)))))))
+      (prn (:data m))
+      (->> labels
+           read-answers
+           (assoc m :label-answers)
+           (write-json writer)))))
