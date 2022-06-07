@@ -16,6 +16,8 @@ flows:
   ctgov:
     steps:
       - run: "gen/ctgov.clj"
+        config:
+          search_term: ocean bees
 
       - run: "map/remove-reviewed.clj"
       

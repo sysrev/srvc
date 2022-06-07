@@ -2,6 +2,7 @@
 
 (require '[cheshire.core :as json]
          '[clojure.java.io :as io]
+         '[clojure.string :as str]
          '[org.httpkit.client :as http])
 
 (def api-url
@@ -39,11 +40,15 @@
 (defn study-url [study]
   (str "https://clinicaltrials.gov/ct2/show/" (nct-id study)))
 
-(print "ClinicalTrials.gov search:  ")
-(flush)
+(defn read-search-term []
+  (print "ClinicalTrials.gov search:  ")
+  (flush)
+  (read-line))
 
-(let [[_config-file outfile] *command-line-args*
-      query (read-line)]
+(let [[config-file outfile] *command-line-args*
+      {:keys [current_step]} (json/parse-string (slurp config-file) true)
+      search-term (some-> current_step :config :search_term str/trim)
+      query (or search-term (read-search-term))]
   (with-open [writer (io/writer outfile)]
     (loop [min-rank 1]
       (let [{:keys [FullStudies MaxRank]} (search query min-rank)]
