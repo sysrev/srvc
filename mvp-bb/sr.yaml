@@ -1,5 +1,7 @@
 db: "sink.db"
 
+reviewer: user@example.com
+
 labels:
   - id: organ
     type: categorical

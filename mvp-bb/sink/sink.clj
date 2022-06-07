@@ -34,6 +34,7 @@
       data_id integer not null,
       json text not null,
       label_def_id integer not null,
+      reviewer text,
       foreign key (data_id) references sr_data (id),
       foreign key (label_def_id) references sr_label_def (id)
    )"])
@@ -68,16 +69,17 @@
        (sqlite/query db)
        first :id))
 
-(defn update-answers [db data-id label-answers]
+(defn update-answers [{:keys [db reviewer]} data-id label-answers]
   (doseq [[label-id answer] label-answers]
-    (->> ["insert into sr_label_answer (data_id, json, label_def_id) values (?,?,?)"
+    (->> ["insert into sr_label_answer (data_id, json, label_def_id, reviewer) values (?,?,?,?)"
           data-id
           (json/generate-string answer)
-          (:id (current-label-def db label-id))]
+          (:id (current-label-def db label-id))
+          reviewer]
          (sqlite/execute! db))))
 
 (let [[config-file infile] *command-line-args*
-      {:keys [db labels]} (json/parse-string (slurp config-file) true)]
+      {:keys [db labels] :as config} (json/parse-string (slurp config-file) true)]
   (create-schema db)
   (update-labels db labels)
   (doseq [{:keys [data label-answers uri]}
@@ -85,4 +87,4 @@
               io/reader
               (json/parsed-seq true))
           :let [data-id (update-data db data uri)]]
-    (update-answers db data-id label-answers)))
+    (update-answers config data-id label-answers)))
