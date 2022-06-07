@@ -61,13 +61,18 @@
         (recur answers more)))))
 
 (let [[config-file outfile infile] *command-line-args*
-      {:keys [labels]} (json/parse-string (slurp config-file) true)]
+      {:keys [current_step labels]} (json/parse-string (slurp config-file) true)
+      labels-map (->> (map (juxt :id identity) labels)
+                      (into {}))
+      step-labels (->> (into ["sr_include"] (:labels current_step))
+                       distinct
+                       (map labels-map))]
   (with-open [writer (io/writer outfile)]
     (doseq [m (-> infile
                   io/reader
                   (json/parsed-seq true))]
       (prn (:data m))
-      (->> labels
+      (->> step-labels
            read-answers
-           (assoc m :label-answers)
+           (update m :label-answers merge)
            (write-json writer)))))

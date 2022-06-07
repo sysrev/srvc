@@ -46,17 +46,20 @@
 (defn review [flow-name]
   (fs/with-temp-dir [dir {:prefix "srvc"}]
     (let [config (get-config "sr.yaml")
-          config-json (str (fs/path dir "config.json"))
-          _ (spit config-json (json/generate-string config))
           {:keys [steps]} (get-in config [:flows (keyword flow-name)])]
-      (loop [[{:keys [run]} & more] steps
+      (loop [[{:keys [run] :as step} & more] steps
              in-file nil]
-        (if more
-          (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
-            (process ["bb" run config-json out-file in-file])
-            (recur more out-file))
-          (do @(process ["bb" run config-json in-file])
-              nil))))))
+        (let [config-json (str (fs/path dir (str (random-uuid) ".json")))]
+          (-> config
+              (assoc :current_step step)
+              json/generate-string
+              (->> (spit config-json)))
+          (if more
+            (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
+              (process ["bb" run config-json out-file in-file])
+              (recur more out-file))
+            (do @(process ["bb" run config-json in-file])
+                nil)))))))
 
 (let [[command & args] *command-line-args*
       command (some-> command str/lower-case)]

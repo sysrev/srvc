@@ -18,6 +18,8 @@ flows:
       - run: "map/remove-reviewed.clj"
       
       - run: "map/map.clj"
+        labels:
+          - organ
 
       - run: "sink/sink.clj"
 
@@ -28,5 +30,7 @@ flows:
       - run: "map/remove-reviewed.clj"
       
       - run: "map/map.clj"
+        labels:
+          - organ
 
       - run: "sink/sink.clj"
