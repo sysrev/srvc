@@ -76,8 +76,8 @@
           (:id (current-label-def db label-id))]
          (sqlite/execute! db))))
 
-(let [[config-file db infile] *command-line-args*
-      {:keys [labels]} (json/parse-string (slurp config-file) true)]
+(let [[config-file infile] *command-line-args*
+      {:keys [db labels]} (json/parse-string (slurp config-file) true)]
   (create-schema db)
   (update-labels db labels)
   (doseq [{:keys [data label-answers uri]}

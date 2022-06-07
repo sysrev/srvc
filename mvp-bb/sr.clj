@@ -40,17 +40,28 @@
   (-> filename slurp yaml/parse-string
       (update :labels parse-labels)))
 
-(fs/with-temp-dir [dir {:prefix "srvc"}]
-  (let [config (get-config "sr.yaml")
-        config-json (str (fs/path dir "config.json"))
-        _ (spit config-json (json/generate-string config))
-        gen-fifo (-> (fs/path dir "gen.fifo") make-fifo str)
-        gen (process ["bb" "gen/gen.clj" gen-fifo])
-        remove-reviewed-fifo (-> (fs/path dir "remove-reviewed.fifo") make-fifo str)
-        remove-reviewed (process ["bb" "map/remove-reviewed.clj" "sink.db" gen-fifo remove-reviewed-fifo])
-        map-fifo (-> (fs/path dir "map.fifo") make-fifo str)
-        map (process ["bb" "map/map.clj" config-json remove-reviewed-fifo map-fifo])
-        sink (process ["bb" "sink/sink.clj" config-json "sink.db" map-fifo])]
-    @sink))
+(defn usage []
+  (println "Usage: sr review flow-id"))
 
-nil
+(defn review [flow-name]
+  (fs/with-temp-dir [dir {:prefix "srvc"}]
+    (let [config (get-config "sr.yaml")
+          config-json (str (fs/path dir "config.json"))
+          _ (spit config-json (json/generate-string config))
+          {:keys [steps]} (get-in config [:flows (keyword flow-name)])]
+      (loop [[{:keys [run]} & more] steps
+             in-file nil]
+        (if more
+          (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
+            (process ["bb" run config-json out-file in-file])
+            (recur more out-file))
+          (do @(process ["bb" run config-json in-file])
+              nil))))))
+
+(let [[command & args] *command-line-args*
+      command (some-> command str/lower-case)]
+  (case command
+    nil (usage)
+    "review" (apply review args)
+    (do (println "Unknown command" (pr-str command))
+        (System/exit 1))))

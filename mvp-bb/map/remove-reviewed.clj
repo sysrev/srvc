@@ -28,7 +28,8 @@
   (.write writer "\n")
   (.flush writer))
 
-(let [[db infile outfile] *command-line-args*]
+(let [[config-file outfile infile] *command-line-args*
+      {:keys [db]} (json/parse-string (slurp config-file) true)]
   (with-open [writer (io/writer outfile)]
     (doseq [m (-> infile
                   io/reader

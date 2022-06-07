@@ -1,3 +1,5 @@
+db: "sink.db"
+
 labels:
   - id: organ
     type: categorical
@@ -7,3 +9,24 @@ labels:
       - other
     question: Which organ was the focus?
     required: true
+
+flows:
+  ctgov:
+    steps:
+      - run: "gen/ctgov.clj"
+
+      - run: "map/remove-reviewed.clj"
+      
+      - run: "map/map.clj"
+
+      - run: "sink/sink.clj"
+
+  gen:
+    steps:
+      - run: "gen/gen.clj"
+
+      - run: "map/remove-reviewed.clj"
+      
+      - run: "map/map.clj"
+
+      - run: "sink/sink.clj"

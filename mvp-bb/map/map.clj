@@ -60,7 +60,7 @@
         answers
         (recur answers more)))))
 
-(let [[config-file infile outfile] *command-line-args*
+(let [[config-file outfile infile] *command-line-args*
       {:keys [labels]} (json/parse-string (slurp config-file) true)]
   (with-open [writer (io/writer outfile)]
     (doseq [m (-> infile

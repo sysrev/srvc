@@ -7,7 +7,7 @@ Install [babashka](https://github.com/babashka/babashka#installation) and SQLite
 Review:
 
 ```
-$ ./srvc.clj 
+$ ./sr.clj review gen
 {:i 1}
 Include? [Y/n]  y
 {:i 2}

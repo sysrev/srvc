@@ -42,7 +42,7 @@
 (print "ClinicalTrials.gov search:  ")
 (flush)
 
-(let [outfile (first *command-line-args*)
+(let [[_config-file outfile] *command-line-args*
       query (read-line)]
   (with-open [writer (io/writer outfile)]
     (loop [min-rank 1]
