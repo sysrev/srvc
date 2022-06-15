@@ -1,9 +1,12 @@
 #!/usr/bin/env bb
 
-(require '[cheshire.core :as json]
-         '[clojure.java.io :as io]
-         '[clojure.string :as str]
-         '[org.httpkit.client :as http])
+(load-file "hash.clj")
+
+(ns ctgov
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [insilica.canonical-json :as json]
+            [org.httpkit.client :as http]))
 
 (def api-url
   "https://clinicaltrials.gov/api/query/full_studies")
@@ -31,7 +34,7 @@
      (throw (ex-info (str "Error: HTTP Status " status)
                      {:response response}))
       (-> body
-          (json/parse-string true)
+          (json/read-str :key-fn keyword)
           :FullStudiesResponse))))
 
 (defn nct-id [study]
@@ -46,7 +49,7 @@
   (read-line))
 
 (let [[config-file outfile] *command-line-args*
-      {:keys [current_step]} (json/parse-string (slurp config-file) true)
+      {:keys [current_step]} (json/read-str (slurp config-file) :key-fn keyword)
       search-term (some-> current_step :config :search_term str/trim)
       query (or search-term (read-search-term))]
   (with-open [writer (io/writer outfile)]
@@ -54,8 +57,10 @@
       (let [{:keys [FullStudies MaxRank]} (search query min-rank)]
         (when (seq FullStudies)
           (doseq [{:keys [Study]} FullStudies]
-            (->> {:data Study :uri (study-url Study)}
-                 json/generate-string
-                 (.write writer))
+            (-> {:data Study
+                 :type "document"
+                 :uri (study-url Study)}
+                 hash/add-hash
+                 (json/write writer))
             (.write writer "\n"))
           (recur (inc MaxRank)))))))

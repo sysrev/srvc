@@ -1,6 +1,6 @@
 db: "sink.db"
 
-reviewer: user@example.com
+reviewer: mailto:user@example.com
 
 labels:
   - id: organ

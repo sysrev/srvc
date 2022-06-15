@@ -1,10 +1,13 @@
 #!/usr/bin/env bb
 
-(require '[babashka.fs :as fs]
-         '[babashka.process :as p]
-         '[cheshire.core :as json]
-         '[clj-yaml.core :as yaml]
-         '[clojure.string :as str])
+(load-file "hash.clj")
+
+(ns sr
+  (:require [babashka.fs :as fs]
+            [babashka.process :as p]
+            [clj-yaml.core :as yaml]
+            [clojure.string :as str]
+            [insilica.canonical-json :as json]))
 
 (def default-opts
   {:inherit true
@@ -52,7 +55,7 @@
         (let [config-json (str (fs/path dir (str (random-uuid) ".json")))]
           (-> config
               (assoc :current_step step)
-              json/generate-string
+              json/write-str
               (->> (spit config-json)))
           (if more
             (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]

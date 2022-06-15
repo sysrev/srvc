@@ -1,13 +1,17 @@
 #!/usr/bin/env bb
 
-(require '[cheshire.core :as json]
-         '[clojure.java.io :as io]
-         '[clojure.string :as str])
+(load-file "hash.clj")
 
-(defn write-json [writer m]
-  (->> m
-       json/generate-string
-       (.write writer))
+(ns map
+  (:require [clojure.java.io :as io]
+            [clojure.string :as str]
+            [insilica.canonical-json :as json]))
+
+(defn unix-time []
+  (quot (System/currentTimeMillis) 1000))
+
+(defn write-json [m writer]
+  (json/write m writer)
   (.write writer "\n")
   (.flush writer))
 
@@ -61,18 +65,26 @@
         (recur answers more)))))
 
 (let [[config-file outfile infile] *command-line-args*
-      {:keys [current_step labels]} (json/parse-string (slurp config-file) true)
+      {:keys [current_step labels reviewer]} (json/read-str (slurp config-file) :key-fn keyword)
       labels-map (->> (map (juxt :id identity) labels)
                       (into {}))
       step-labels (->> (into ["sr_include"] (:labels current_step))
                        distinct
                        (map labels-map))]
   (with-open [writer (io/writer outfile)]
-    (doseq [m (-> infile
-                  io/reader
-                  (json/parsed-seq true))]
-      (prn (:data m))
-      (->> step-labels
-           read-answers
-           (update m :label-answers merge)
-           (write-json writer)))))
+    (doseq [line (-> infile io/reader line-seq)
+            :let [{:keys [hash type] :as m} (json/read-str line :key-fn keyword)]]
+      (.write writer line)
+      (.write writer "\n")
+      (.flush writer)
+      (when (= "document" type)
+        (prn (:data m))
+        (doseq [[k v] (read-answers step-labels)]
+          (-> {:data {:answer v
+                      :document hash
+                      :label (hash/hash {:data (get labels-map k) :type "label"})
+                      :reviewer reviewer
+                      :timestamp (unix-time)}
+               :type "label-answer"}
+              hash/add-hash
+              (write-json writer)))))))

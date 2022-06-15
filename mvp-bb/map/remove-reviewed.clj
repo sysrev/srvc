@@ -1,38 +1,28 @@
 #!/usr/bin/env bb
 
-(require '[babashka.fs :as fs]
-         '[babashka.pods :as pods]
-         '[cheshire.core :as json]
+(require '[cheshire.core :as json]
          '[clojure.java.io :as io])
 
-(pods/load-pod 'org.babashka/go-sqlite3 "0.1.0")
-(require '[pod.babashka.go-sqlite3 :as sqlite])
-
-(defn reviewed? [db {:keys [data uri]}]
-  (boolean
-   (cond
-     (not (fs/exists? db)) false
-     (seq uri) (->> ["select 1 from sr_data where uri = ? limit 1" uri]
-                    (sqlite/query db)
-                    first)
-     :else
-     (->> ["select 1 from sr_data where json = ? limit 1"
-           (json/generate-string data)]
-          (sqlite/query db)
-          first))))
-
-(defn write-json [writer m]
-  (->> m
-       json/generate-string
-       (.write writer))
-  (.write writer "\n")
-  (.flush writer))
+(defn reviewed-docs [file reviewer]
+  (try
+    (with-open [reader (io/reader file)]
+      (loop [[line & more] (line-seq reader)
+             hashes (transient #{})]
+        (let [{:keys [data type]} (some-> line (json/parse-string true))]
+          (cond
+            (not line) (persistent! hashes)
+            (and (= "label-answer" type) (= reviewer (:reviewer data)))
+            #__ (recur more (conj! hashes (:document data)))
+            :else (recur more hashes)))))
+    (catch java.io.FileNotFoundException _)))
 
 (let [[config-file outfile infile] *command-line-args*
-      {:keys [db]} (json/parse-string (slurp config-file) true)]
+      {:keys [db reviewer]} (json/parse-string (slurp config-file) true)
+      reviewed (reviewed-docs db reviewer)]
   (with-open [writer (io/writer outfile)]
-    (doseq [m (-> infile
-                  io/reader
-                  (json/parsed-seq true))]
-      (when-not (reviewed? db m)
-        (write-json writer m)))))
+    (doseq [line (line-seq (io/reader infile))
+            :let [{:strs [hash]} (json/parse-string line)]]
+      (when-not (reviewed hash)
+        (.write writer line)
+        (.write writer "\n")
+        (.flush writer)))))

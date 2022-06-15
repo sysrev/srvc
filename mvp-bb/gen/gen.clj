@@ -1,8 +1,16 @@
 #!/usr/bin/env bb
 
-(require '[clojure.java.io :as io])
+(load-file "hash.clj")
+
+(ns gen
+  (:require [clojure.java.io :as io]
+            [insilica.canonical-json :as json]))
 
 (let [[_config-file outfile] *command-line-args*]
   (with-open [writer (io/writer outfile)]
     (doseq [i (range 1 11)]
-      (.write writer (str "{\"data\":{\"i\":" i "}}\n")))))
+      (-> {:data {:i i}
+           :type "document"}
+          hash/add-hash
+          (json/write writer))
+        (.write writer "\n"))))
