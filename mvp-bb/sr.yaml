@@ -1,4 +1,4 @@
-db: "sink.db"
+db: "sink.jsonl"
 
 reviewer: mailto:user@example.com
 
