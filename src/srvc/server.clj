@@ -2,7 +2,8 @@
   (:require [clojure.java.io :as io]
             [hiccup.core :as h]
             [insilica.canonical-json :as json]
-            [org.httpkit.server :as server]))
+            [org.httpkit.server :as server]
+            [reitit.ring :as rr]))
 
 (defn head []
   [:head
@@ -14,6 +15,11 @@
   [:html
    (head)
    body])
+
+(defn response [body]
+  {:status 200
+   :headers {"Content-Type" "text/html"}
+   :body (list "<!doctype html>" (h/html (page body)))})
 
 (defn table-head [col-names]
   [:thead {:class "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
@@ -46,15 +52,13 @@
                "Yes"]))))
 
 (defn articles [data]
-  (page
+  (response
    [:body {:class "dark:bg-gray-900"}
     (table ["Document" "Inclusion"]
            (article-rows data))]))
 
-(defn handler [request data]
-  {:status 200
-   :headers {"Content-Type" "text/html"}
-   :body (list "<!doctype html>" (h/html (articles data)))})
+(defn routes [data]
+  [["/" {:get #(do % (articles data))}]])
 
 (defn load-data [filename]
   (let [raw (->> filename io/reader line-seq distinct
@@ -64,7 +68,7 @@
 
 (defn start! [data-file]
   (let [data (load-data data-file)]
-    (server/run-server #(handler % data))))
+    (server/run-server #((-> data routes rr/router rr/ring-handler) %))))
 
 (defn -main [data-file]
   (start! data-file)

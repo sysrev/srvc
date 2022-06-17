@@ -6,6 +6,7 @@
         {:git/sha "7cd4d1fc1301aeea36d5ba80e65ebe2fdbaaa392"
          :git/url "https://github.com/insilica/clj-multihash.git"}
         hiccup/hiccup {:mvn/version "1.0.5"}
-        http-kit/http-kit {:mvn/version "2.6.0"}}
+        http-kit/http-kit {:mvn/version "2.6.0"}
+        metosin/reitit {:mvn/version "0.5.18"}}
  :aliases
  {:server {:main-opts ["-m" "srvc.server"]}}}
