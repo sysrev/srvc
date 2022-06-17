@@ -1,8 +1,10 @@
 (ns srvc.server
+  (:refer-clojure :exclude [hash])
   (:require [clojure.java.io :as io]
             [hiccup.core :as h]
             [insilica.canonical-json :as json]
             [org.httpkit.server :as server]
+            [reitit.core :as re]
             [reitit.ring :as rr]))
 
 (defn head []
@@ -57,8 +59,28 @@
     (table ["Document" "Inclusion"]
            (article-rows data))]))
 
+(defn hash [request data]
+  (let [id (-> request ::re/match :path-params :id)
+        item (-> data :by-hash (get id))]
+    (when item
+      {:status 200
+       :headers {"Content-Type" "application/json"}
+       :body (json/write-str item)})))
+
+(defn hashes [request data]
+  (server/as-channel
+   request
+   {:on-open (fn [ch]
+               (server/send! ch {:status 200} false)
+               (doseq [{:keys [hash]} (:raw data)]
+                 (server/send! ch (str (json/write-str hash) "\n") false))
+               (server/close ch))}))
+
 (defn routes [data]
-  [["/" {:get #(do % (articles data))}]])
+  [["/" {:get #(do % (articles data))}]
+   ["/api/v1"
+    ["/hash/:id" {:get #(hash % data)}]
+    ["/hashes" {:get #(hashes % data)}]]])
 
 (defn load-data [filename]
   (let [raw (->> filename io/reader line-seq distinct
