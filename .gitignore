@@ -3,5 +3,6 @@
 *.log
 
 .clj-kondo/
+.cpcache/
 .direnv/
 .lsp/

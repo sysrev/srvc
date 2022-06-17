@@ -1,8 +1,4 @@
-#!/usr/bin/env bb
-
-(load-file "hash.clj")
-
-(ns server
+(ns srvc.server
   (:require [clojure.java.io :as io]
             [hiccup.core :as h]
             [insilica.canonical-json :as json]
@@ -66,9 +62,10 @@
         by-hash (into {} (map (juxt :hash identity) raw))]
     {:by-hash by-hash :raw raw}))
 
-(defn run! []
-  (let [data (load-data "sink.jsonl")]
+(defn start! [data-file]
+  (let [data (load-data data-file)]
     (server/run-server #(handler % data))))
 
-(run!)
-(Thread/sleep Long/MAX_VALUE)
+(defn -main [data-file]
+  (start! data-file)
+  (Thread/sleep Long/MAX_VALUE))
