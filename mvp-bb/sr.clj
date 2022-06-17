@@ -3,9 +3,11 @@
 (load-file "hash.clj")
 
 (ns sr
-  (:require [babashka.fs :as fs]
+  (:require [babashka.curl :as curl]
+            [babashka.fs :as fs]
             [babashka.process :as p]
             [clj-yaml.core :as yaml]
+            [clojure.java.io :as io]
             [clojure.string :as str]
             [insilica.canonical-json :as json]))
 
@@ -56,7 +58,31 @@
         (->> (spit config-json)))
     config-json))
 
-(defn push-to-file [in-file out-file]
+(defn remote-target? [s]
+  (let [lc (str/lower-case s)]
+    (or (str/starts-with? lc "http://")
+        (str/starts-with? lc "https://"))))
+
+(defn api-route [target & path-parts]
+  (str target (when-not (str/ends-with? target "/") "/")
+       "api/v1/" (str/join "/" path-parts)))
+
+(defn make-remote-in-file [in-source dir]
+  (let [in-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)
+        server-hashes (->> (curl/get (api-route in-source "hashes") {:as :stream})
+                           :body io/reader line-seq
+                           (map json/read-str))]
+    (future
+      (with-open [writer (io/writer in-file)]
+        (doseq [hash server-hashes]
+          (->> (curl/get (api-route in-source "hash" hash))
+               :body
+               (.write writer))
+          (.write writer "\n")
+          (.flush writer))))
+    in-file))
+
+(defn push-to-file [in-source out-file]
   (when-not (fs/exists? out-file)
     (-> out-file fs/absolutize fs/parent fs/create-dirs)
     (fs/create-file out-file))
@@ -64,7 +90,10 @@
     (let [config (-> (get-config "sr.yaml")
                      (assoc :db out-file))
           {:keys [run] :as step} default-sink-step
-          config-json (write-step-config config dir step)]
+          config-json (write-step-config config dir step)
+          in-file (if (remote-target? in-source)
+                    (make-remote-in-file in-source dir)
+                    in-source)]
       @(process ["bb" run config-json in-file]))))
 
 (defn pull [target]
