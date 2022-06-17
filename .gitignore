@@ -2,7 +2,9 @@
 *.jsonl
 *.log
 
+.calva/
 .clj-kondo/
 .cpcache/
 .direnv/
 .lsp/
+.nrepl-port
