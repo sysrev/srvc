@@ -40,10 +40,14 @@
     (table-head col-names)
     (table-body rows)]])
 
+(defn doc-title [{:keys [data]}]
+  (get-in data [:ProtocolSection :IdentificationModule :OfficialTitle]))
+
 (defn article-rows [{:keys [raw]}]
   (->> (filter (comp #{"document"} :type) raw)
-       (map (fn [{:keys [data]}]
-              [(json/write-str data) "Yes"]))))
+       (map (fn [{:keys [data] :as doc}]
+              [(or (doc-title doc) (json/write-str data))
+               "Yes"]))))
 
 (defn articles [data]
   (page
