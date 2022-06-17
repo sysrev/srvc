@@ -25,8 +25,6 @@ flows:
         labels:
           - organ
 
-      - run: "sink/sink.clj"
-
   gen:
     steps:
       - run: "gen/gen.clj"
@@ -36,5 +34,3 @@ flows:
       - run: "map/map.clj"
         labels:
           - organ
-
-      - run: "sink/sink.clj"
