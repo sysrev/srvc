@@ -16,6 +16,7 @@
    :shutdown p/destroy-tree})
 
 (def default-sink-step {:run "sink/sink.clj"})
+(def remote-sink-step {:run "sink/sink-remote.clj"})
 
 (defn process [args & [opts]]
   (p/process args (merge default-opts opts)))
@@ -82,14 +83,16 @@
           (.flush writer))))
     in-file))
 
-(defn push-to-file [in-source out-file]
-  (when-not (fs/exists? out-file)
+(defn push-to-target [in-source out-file]
+  (when-not (or (remote-target? out-file) (fs/exists? out-file))
     (-> out-file fs/absolutize fs/parent fs/create-dirs)
     (fs/create-file out-file))
   (fs/with-temp-dir [dir {:prefix "srvc"}]
     (let [config (-> (get-config "sr.yaml")
                      (assoc :db out-file))
-          {:keys [run] :as step} default-sink-step
+          {:keys [run] :as step} (if (remote-target? out-file)
+                                   remote-sink-step
+                                   default-sink-step)
           config-json (write-step-config config dir step)
           in-file (if (remote-target? in-source)
                     (make-remote-in-file in-source dir)
@@ -98,11 +101,11 @@
 
 (defn pull [target]
   (let [{:keys [db]} (get-config "sr.yaml")]
-    (push-to-file target db)))
+    (push-to-target target db)))
 
 (defn push [target]
   (let [{:keys [db]} (get-config "sr.yaml")]
-    (push-to-file db target)))
+    (push-to-target db target)))
 
 (defn sync [target]
   (pull target)

@@ -7,6 +7,8 @@
             [reitit.core :as re]
             [reitit.ring :as rr]))
 
+(defonce write-lock (Object.))
+
 (defn head []
   [:head
    [:meta {:charset "UTF-8"}]
@@ -53,44 +55,67 @@
               [(or (doc-title doc) (json/write-str data))
                "Yes"]))))
 
-(defn articles [data]
+(defn articles [dtm]
   (response
    [:body {:class "dark:bg-gray-900"}
     (table ["Document" "Inclusion"]
-           (article-rows data))]))
+           (article-rows @dtm))]))
 
-(defn hash [request data]
+(defn hash [request dtm]
   (let [id (-> request ::re/match :path-params :id)
-        item (-> data :by-hash (get id))]
+        item (-> @dtm :by-hash (get id))]
     (when item
       {:status 200
        :headers {"Content-Type" "application/json"}
        :body (json/write-str item)})))
 
-(defn hashes [request data]
+(defn hashes [request dtm]
   (server/as-channel
    request
    {:on-open (fn [ch]
                (server/send! ch {:status 200} false)
-               (doseq [{:keys [hash]} (:raw data)]
+               (doseq [{:keys [hash]} (:raw @dtm)]
                  (server/send! ch (str (json/write-str hash) "\n") false))
                (server/close ch))}))
 
-(defn routes [data]
-  [["/" {:get #(do % (articles data))}]
+(defn add-data [{:keys [by-hash raw] :as data} {:keys [hash] :as item}]
+  (if (get by-hash hash)
+    data
+    (assoc data
+           :by-hash (assoc by-hash hash item)
+           :raw (conj raw item))))
+
+(defn upload [request dtm data-file]
+  (locking [write-lock]
+    (with-open [writer (io/writer data-file :append true)]
+      (doseq [{:keys [hash] :as item} (some->> request :body
+                                               io/reader line-seq
+                                               (map #(json/read-str % :key-fn keyword)))]
+        (when-not (get (:by-hash @dtm) hash)
+          (json/write item writer)
+          (.write writer "\n")
+          (swap! dtm add-data item)))))
+  {:status 201
+   :headers {"Content-Type" "application/json"}
+   :body "{\"success\":true}"})
+
+(defn routes [dtm data-file]
+  [["/" {:get #(do % (articles dtm))}]
    ["/api/v1"
-    ["/hash/:id" {:get #(hash % data)}]
-    ["/hashes" {:get #(hashes % data)}]]])
+    ["/hash/:id" {:get #(hash % dtm)}]
+    ["/hashes" {:get #(hashes % dtm)}]
+    ["/upload" {:post #(upload % dtm data-file)}]]])
 
 (defn load-data [filename]
-  (let [raw (->> filename io/reader line-seq distinct
-                 (mapv #(json/read-str % :key-fn keyword)))
-        by-hash (into {} (map (juxt :hash identity) raw))]
-    {:by-hash by-hash :raw raw}))
+  (let [items (->> filename io/reader line-seq distinct
+                 (map #(json/read-str % :key-fn keyword)))]
+    (reduce add-data {:by-hash {} :raw []} items)))
 
 (defn start! [data-file]
-  (let [data (load-data data-file)]
-    (server/run-server #((-> data routes rr/router rr/ring-handler) %))))
+  (let [dtm (atom (load-data data-file))]
+    (server/run-server #((-> (routes dtm data-file)
+                             rr/router rr/ring-handler)
+                         %))))
 
 (defn -main [data-file]
   (start! data-file)
