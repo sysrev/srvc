@@ -25,16 +25,18 @@
 (let [[config-file infile] *command-line-args*
       {:keys [db labels]} (json/read-str (slurp config-file) :key-fn keyword)]
   (with-open [writer (io/writer db :append true)]
-    (let [existing (existing-hashes db)]
+    (let [existing (atom (existing-hashes db))]
       (doseq [label labels]
         (let [label (hash/add-hash {:data label :type "label"})]
-          (write-item label writer existing)))
+          (write-item label writer @existing)
+          (swap! existing conj (:hash label))))
       (doseq [line (-> infile io/reader line-seq)
               :let [{:keys [hash] :as m} (json/read-str line :key-fn keyword)
                     actual-hash (hash/hash m)]]
         (if (not= actual-hash hash)
           (throw (ex-info "Hash mismatch" {:actual-hash actual-hash :expected-hash hash :item m}))
-          (when-not (existing hash)
+          (when-not (@existing hash)
             (.write writer line)
             (.write writer "\n")
-            (.flush writer)))))))
+            (.flush writer)
+            (swap! existing conj hash)))))))
