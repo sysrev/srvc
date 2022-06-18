@@ -33,11 +33,12 @@
    :question "Include?"
    :required true})
 
+;; TODO #4 'type' should be wrapped into json-schema.
 (defn canonical-label [label]
   (-> label
       (update :id str/lower-case)
       (update :required boolean)
-      (update :type str/lower-case)))
+      (update :type str/lower-case))) 
 
 (defn parse-labels [labels]
   (let [labels (mapv canonical-label labels)]
