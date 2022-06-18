@@ -25,6 +25,7 @@
   @(p/process ["mkfifo" (str path)])
   path)
 
+;; TODO #3 include shouldn't be a special default label. 
 (def default-include
   {:id "sr_include"
    :type "boolean"
