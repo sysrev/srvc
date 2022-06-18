@@ -40,6 +40,7 @@
       (update :required boolean)
       (update :type str/lower-case))) 
 
+;; TODO include shouldn't be a special default label (see issue #3)
 (defn parse-labels [labels]
   (let [labels (mapv canonical-label labels)]
     (if (some #(= "sr_include" (:id %)) labels)
