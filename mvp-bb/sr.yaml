@@ -4,6 +4,12 @@ db: "sink.jsonl"
 reviewer: mailto:user@example.com
 
 labels:
+  - id: include
+    type: boolean
+    inclusion-values:
+      - true
+    question: Include?
+    required: true
   - id: organ
     type: categorical
     categories:
@@ -24,6 +30,7 @@ flows:
       
       - run: "map/map.clj"
         labels:
+          - include
           - organ
 
   gen:
@@ -34,4 +41,5 @@ flows:
       
       - run: "map/map.clj"
         labels:
+          - include
           - organ
