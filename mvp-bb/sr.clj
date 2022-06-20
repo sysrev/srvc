@@ -104,9 +104,11 @@
 
 (defn review [flow-name]
   (fs/with-temp-dir [dir {:prefix "srvc"}]
-    (let [config (get-config "sr.yaml")
+    (let [{:keys [db] :as config} (get-config "sr.yaml")
           {:keys [steps]} (get-in config [:flows (keyword flow-name)])
-          steps (concat steps [default-sink-step])]
+          steps (concat steps [(if (remote-target? db)
+                                 remote-sink-step
+                                 default-sink-step)])]
       (loop [[{:keys [run] :as step} & more] steps
              in-file nil]
         (let [config-json (write-step-config config dir step)]

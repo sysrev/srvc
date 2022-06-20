@@ -1,4 +1,5 @@
 db: "sink.jsonl"
+#db: "http://localhost:8090"
 
 reviewer: mailto:user@example.com
 
