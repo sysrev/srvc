@@ -125,11 +125,11 @@
     ["/upload" {:post #(upload % dtm data-file)}]]])
 
 (defn load-data [filename]
-  (let [items (->> filename io/reader line-seq distinct
-                 (map #(json/read-str % :key-fn keyword)))]
-    (reduce add-data
-            {:by-hash {} :doc-to-answers {} :raw []}
-            items)))
+  (try
+    (let [items (->> filename io/reader line-seq distinct
+                     (map #(json/read-str % :key-fn keyword)))]
+      (reduce add-data {} items))
+    (catch java.io.FileNotFoundException _)))
 
 (defn start! [data-file]
   (let [dtm (atom (load-data data-file))]
