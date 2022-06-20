@@ -53,23 +53,23 @@
           :else (recur))))))
 
 (defn read-answers [labels]
-  (loop [answers {}
-         [{:keys [id inclusion-values] :as label} & more] labels]
-    (let [answer (read-answer label)
-          answers (assoc answers id answer)]
-      (println)
-      (if (or (empty? more)
-              (and (seq inclusion-values)
-                   (not (some (partial = answer) inclusion-values))))
-        answers
-        (recur answers more)))))
+  (when (seq labels)
+    (loop [answers {}
+           [{:keys [id inclusion-values] :as label} & more] labels]
+      (let [answer (read-answer label)
+            answers (assoc answers id answer)]
+        (println)
+        (if (or (empty? more)
+                (and (seq inclusion-values)
+                     (not (some (partial = answer) inclusion-values))))
+          answers
+          (recur answers more))))))
 
 (let [[config-file outfile infile] *command-line-args*
       {:keys [current_step labels reviewer]} (json/read-str (slurp config-file) :key-fn keyword)
       labels-map (->> (map (juxt :id identity) labels)
                       (into {}))
-      step-labels (->> (into ["sr_include"] (:labels current_step))
-                       distinct
+      step-labels (->> current_step :labels distinct
                        (map labels-map))]
   (with-open [writer (io/writer outfile)]
     (doseq [line (-> infile io/reader line-seq)

@@ -25,14 +25,6 @@
   @(p/process ["mkfifo" (str path)])
   path)
 
-;; TODO #3 include shouldn't be a special default label. 
-(def default-include
-  {:id "sr_include"
-   :type "boolean"
-   :inclusion-values [true]
-   :question "Include?"
-   :required true})
-
 ;; TODO #4 'type' should be wrapped into json-schema.
 (defn canonical-label [label]
   (-> label
@@ -40,12 +32,8 @@
       (update :required boolean)
       (update :type str/lower-case))) 
 
-;; TODO include shouldn't be a special default label (see issue #3)
 (defn parse-labels [labels]
-  (let [labels (mapv canonical-label labels)]
-    (if (some #(= "sr_include" (:id %)) labels)
-      labels
-      (into [default-include] labels))))
+  (mapv canonical-label labels))
 
 (defn get-config [filename]
   (-> filename slurp yaml/parse-string
