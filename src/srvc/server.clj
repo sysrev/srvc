@@ -14,7 +14,10 @@
   [:head
    [:meta {:charset "UTF-8"}]
    [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-   [:script {:src "https://cdn.tailwindcss.com"}]])
+   [:script {:src "https://cdn.tailwindcss.com"}]
+   [:script {:crossorigin "anonymous"
+             :integrity "sha384-EzBXYPt0/T6gxNp0nuPtLkmRpmDBbjg6WmCUZRLXBBwYYmwAUxzlSGej0ARHX0Bo"
+             :src "https://unpkg.com/htmx.org@1.7.0"}]])
 
 (defn page [body]
   [:html
@@ -74,7 +77,7 @@
 
 (defn event-seq [{:keys [by-hash raw] :as dt}]
   (distinct
-   (for [{:keys [data type uri] :as item} (rseq raw)]
+   (for [{:keys [data type uri] :as item} (some-> raw rseq)]
      [(case type
         "document" (str "New document: " (doc-title item))
         "label" (str "New label: " (:question data))
@@ -84,11 +87,28 @@
                         (answer-table dt (:document data))]
         (pr-str item))])))
 
+(defn event-table [data]
+  [:div#event-table
+   (table ["Event"]
+          (take 10 (event-seq data)))])
+
 (defn activity [_request dtm]
   (response
    [:body {:class "dark:bg-gray-900"}
-    (table ["Event"]
-           (take 10 (event-seq @dtm)))]))
+    [:div {:hx-ws "connect:/hx/activity"}
+     (event-table @dtm)]]))
+
+(defn hx-activity [request dtm]
+  (let [watch-key (str (random-uuid))]
+    (server/as-channel
+     request
+     {:on-close (fn [_ _] (remove-watch dtm watch-key))
+      :on-open (fn [ch]
+                 (server/send! ch {:status 200 :body (h/html (event-table @dtm))} false)
+                 (add-watch dtm watch-key
+                            (fn [_ _ _ data]
+                              (prn {:body (h/html (event-table data))})
+                              (server/send! ch {:body (h/html (event-table data))} false))))})))
 
 (defn hash [request dtm]
   (let [id (-> request ::re/match :path-params :id)
@@ -148,6 +168,8 @@
 (defn routes [dtm data-file]
   [["/" {:get #(do % (articles dtm))}]
    ["/activity" {:get #(activity % dtm)}]
+   ["/hx"
+    ["/activity" {:get #(hx-activity % dtm)}]]
    ["/api/v1"
     ["/document/:id/label-answers" {:get #(doc-answers % dtm)}]
     ["/hash/:id" {:get #(hash % dtm)}]
