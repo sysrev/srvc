@@ -18,7 +18,7 @@
 
 (let [[config-file outfile infile] *command-line-args*
       {:keys [db reviewer]} (json/parse-string (slurp config-file) true)
-      reviewed (reviewed-docs db reviewer)]
+      reviewed (or (reviewed-docs db reviewer) #{})]
   (with-open [writer (io/writer outfile)]
     (doseq [line (line-seq (io/reader infile))
             :let [{:strs [hash]} (json/parse-string line)]]
