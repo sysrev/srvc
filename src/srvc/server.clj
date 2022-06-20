@@ -3,6 +3,7 @@
   (:require [clojure.java.io :as io]
             [hiccup.core :as h]
             [insilica.canonical-json :as json]
+            [lambdaisland.uri :as uri]
             [org.httpkit.server :as server]
             [reitit.core :as re]
             [reitit.ring :as rr]))
@@ -46,20 +47,48 @@
     (table-head col-names)
     (table-body rows)]])
 
-(defn doc-title [{:keys [data]}]
-  (get-in data [:ProtocolSection :IdentificationModule :OfficialTitle]))
+(defn doc-title [{:keys [data uri]}]
+  (or (get-in data [:ProtocolSection :IdentificationModule :OfficialTitle])
+      uri
+      (json/write-str data)))
 
 (defn article-rows [{:keys [raw]}]
   (->> (filter (comp #{"document"} :type) raw)
-       (map (fn [{:keys [data] :as doc}]
-              [(or (doc-title doc) (json/write-str data))
-               "Yes"]))))
+       (map (fn [{:keys [data uri] :as doc}]
+              [(doc-title doc) "Yes"]))))
 
 (defn articles [dtm]
   (response
    [:body {:class "dark:bg-gray-900"}
     (table ["Document" "Inclusion"]
            (article-rows @dtm))]))
+
+(defn answer-table [{:keys [by-hash doc-to-answers]} doc-hash]
+  (table ["Label" "Answer"]
+         (for [{{:keys [answer label]} :data} (doc-to-answers doc-hash)]
+           [(-> label by-hash :data :question)
+            answer])))
+
+(defn user-display [user-uri]
+  (some-> user-uri uri/uri (assoc :scheme nil) str))
+
+(defn event-seq [{:keys [by-hash raw] :as dt}]
+  (distinct
+   (for [{:keys [data type uri] :as item} (rseq raw)]
+     [(case type
+        "document" (str "New document: " (doc-title item))
+        "label" (str "New label: " (:question data))
+        "label-answer" [:div (str (-> data :reviewer user-display)
+                                  " labeled "
+                                  (-> data :document by-hash doc-title))
+                        (answer-table dt (:document data))]
+        (pr-str item))])))
+
+(defn activity [_request dtm]
+  (response
+   [:body {:class "dark:bg-gray-900"}
+    (table ["Event"]
+           (take 10 (event-seq @dtm)))]))
 
 (defn hash [request dtm]
   (let [id (-> request ::re/match :path-params :id)
@@ -95,8 +124,8 @@
   (if (get by-hash hash)
     data
     (cond-> (assoc data
-                   :by-hash (assoc by-hash hash item)
-                   :raw (conj raw item))
+                   :by-hash (assoc (or by-hash {}) hash item)
+                   :raw (conj (or raw []) item))
 
       (= "label-answer" type)
       (update-in [:doc-to-answers (-> item :data :document)]
@@ -118,6 +147,7 @@
 
 (defn routes [dtm data-file]
   [["/" {:get #(do % (articles dtm))}]
+   ["/activity" {:get #(activity % dtm)}]
    ["/api/v1"
     ["/document/:id/label-answers" {:get #(doc-answers % dtm)}]
     ["/hash/:id" {:get #(hash % dtm)}]
