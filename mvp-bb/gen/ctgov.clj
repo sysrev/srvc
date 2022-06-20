@@ -57,8 +57,7 @@
       (let [{:keys [FullStudies MaxRank]} (search query min-rank)]
         (when (seq FullStudies)
           (doseq [{:keys [Study]} FullStudies]
-            (-> {:data Study
-                 :type "document"
+            (-> {:type "document"
                  :uri (study-url Study)}
                  hash/add-hash
                  (json/write writer))

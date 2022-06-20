@@ -73,12 +73,15 @@
                        (map labels-map))]
   (with-open [writer (io/writer outfile)]
     (doseq [line (-> infile io/reader line-seq)
-            :let [{:keys [hash type] :as m} (json/read-str line :key-fn keyword)]]
+            :let [{:keys [data hash type uri] :as m} (json/read-str line :key-fn keyword)]]
       (.write writer line)
       (.write writer "\n")
       (.flush writer)
       (when (= "document" type)
-        (prn (:data m))
+        (when data
+          (json/write data *out*)
+          (println))
+        (some-> uri println)
         (doseq [[k v] (read-answers step-labels)]
           (-> {:data {:answer v
                       :document hash
