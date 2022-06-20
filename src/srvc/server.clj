@@ -78,12 +78,29 @@
                  (server/send! ch (str (json/write-str hash) "\n") false))
                (server/close ch))}))
 
-(defn add-data [{:keys [by-hash raw] :as data} {:keys [hash] :as item}]
+(defn doc-answers [request dtm]
+  (let [id (-> request ::re/match :path-params :id)
+        data @dtm
+        item (-> data :by-hash (get id))]
+    (when item
+      (server/as-channel
+       request
+       {:on-open (fn [ch]
+                   (server/send! ch {:status 200} false)
+                   (doseq [answer (-> data :doc-to-answers (get id))]
+                     (server/send! ch (str (json/write-str answer) "\n") false))
+                   (server/close ch))}))))
+
+(defn add-data [{:keys [by-hash raw] :as data} {:keys [hash type] :as item}]
   (if (get by-hash hash)
     data
-    (assoc data
-           :by-hash (assoc by-hash hash item)
-           :raw (conj raw item))))
+    (cond-> (assoc data
+                   :by-hash (assoc by-hash hash item)
+                   :raw (conj raw item))
+
+      (= "label-answer" type)
+      (update-in [:doc-to-answers (-> item :data :document)]
+                 (fnil conj []) item))))
 
 (defn upload [request dtm data-file]
   (locking [write-lock]
@@ -102,6 +119,7 @@
 (defn routes [dtm data-file]
   [["/" {:get #(do % (articles dtm))}]
    ["/api/v1"
+    ["/document/:id/label-answers" {:get #(doc-answers % dtm)}]
     ["/hash/:id" {:get #(hash % dtm)}]
     ["/hashes" {:get #(hashes % dtm)}]
     ["/upload" {:post #(upload % dtm data-file)}]]])
@@ -109,7 +127,9 @@
 (defn load-data [filename]
   (let [items (->> filename io/reader line-seq distinct
                  (map #(json/read-str % :key-fn keyword)))]
-    (reduce add-data {:by-hash {} :raw []} items)))
+    (reduce add-data
+            {:by-hash {} :doc-to-answers {} :raw []}
+            items)))
 
 (defn start! [data-file]
   (let [dtm (atom (load-data data-file))]
