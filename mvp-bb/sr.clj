@@ -31,7 +31,7 @@
 ;; TODO #4 'type' should be wrapped into json-schema.
 (defn canonical-label [id label]
   (-> label
-      (assoc :id (str/lower-case id))
+      (assoc :id (str/lower-case (name id)))
       (update :required boolean)
       (update :type str/lower-case))) 
 

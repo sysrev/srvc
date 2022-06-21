@@ -28,7 +28,7 @@
       {:keys [db labels]} (json/read-str (slurp config-file) :key-fn keyword)]
   (with-open [writer (io/writer db :append true)]
     (let [existing (atom (existing-hashes db))]
-      (doseq [label labels]
+      (doseq [label (vals labels)]
         (let [label (sb/add-hash {:data label :type "label"})]
           (write-item label writer @existing)
           (swap! existing conj (:hash label))))

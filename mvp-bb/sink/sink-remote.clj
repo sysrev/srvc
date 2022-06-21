@@ -36,9 +36,10 @@
 
 (let [[config-file infile] *command-line-args*
       {:keys [db labels]} (json/read-str (slurp config-file) :key-fn keyword)
-      label-items (map #(sb/add-hash {:data % :type "label"}) labels)
+      label-events (map #(sb/add-hash {:data % :type "label"})
+                       (vals labels))
       existing (atom (existing-hashes db))
-      new-labels (remove (comp @existing :hash) label-items)]
+      new-labels (remove (comp @existing :hash) label-events)]
   (upload-lines! db (map json/write-str new-labels))
   (swap! existing into (map :hash new-labels))
   (doseq [line (-> infile io/reader line-seq)
