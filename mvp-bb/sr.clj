@@ -100,7 +100,7 @@
           in-file (if (remote-target? in-source)
                     (make-remote-in-file in-source dir)
                     in-source)]
-      @(process ["bb" run config-json in-file]))))
+      @(process ["perl" run config-json in-file]))))
 
 (defn pull [target]
   (let [{:keys [db]} (get-config "sr.yaml")]
@@ -126,9 +126,9 @@
         (let [config-json (write-step-config config dir step)]
           (if more
             (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
-              (process ["bb" run config-json out-file in-file])
+              (process ["perl" run config-json out-file in-file])
               (recur more out-file))
-            @(process ["bb" run config-json in-file])))))))
+            @(process ["perl" run config-json in-file])))))))
 
 (let [[command & args] *command-line-args*
       command (some-> command str/lower-case)]
