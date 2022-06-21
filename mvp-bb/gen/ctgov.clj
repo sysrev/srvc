@@ -1,12 +1,14 @@
 #!/usr/bin/env bb
 
-(load-file "hash.clj")
+(require '[babashka.deps :as deps]
+         '[clojure.java.io :as io]
+         '[clojure.string :as str]
+         '[org.httpkit.client :as http])
 
-(ns ctgov
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [insilica.canonical-json :as json]
-            [org.httpkit.client :as http]))
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
+
+(require '[insilica.canonical-json :as json]
+         '[srvc.bb :as sb])
 
 (def api-url
   "https://clinicaltrials.gov/api/query/full_studies")
@@ -59,7 +61,7 @@
           (doseq [{:keys [Study]} FullStudies]
             (-> {:type "document"
                  :uri (study-url Study)}
-                 hash/add-hash
+                 sb/add-hash
                  (json/write writer))
             (.write writer "\n"))
           (recur (inc MaxRank)))))))

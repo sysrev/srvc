@@ -1,10 +1,12 @@
 #!/usr/bin/env bb
 
-(load-file "hash.clj")
+(require '[babashka.deps :as deps]
+         '[clojure.java.io :as io])
 
-(ns sink
-  (:require [clojure.java.io :as io]
-            [insilica.canonical-json :as json]))
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
+
+(require '[insilica.canonical-json :as json]
+         '[srvc.bb :as sb])
 
 (defn existing-hashes [file]
   (try
@@ -27,12 +29,12 @@
   (with-open [writer (io/writer db :append true)]
     (let [existing (atom (existing-hashes db))]
       (doseq [label labels]
-        (let [label (hash/add-hash {:data label :type "label"})]
+        (let [label (sb/add-hash {:data label :type "label"})]
           (write-item label writer @existing)
           (swap! existing conj (:hash label))))
       (doseq [line (-> infile io/reader line-seq)
               :let [{:keys [hash] :as m} (json/read-str line :key-fn keyword)
-                    actual-hash (hash/hash m)]]
+                    actual-hash (sb/json-hash m)]]
         (if (not= actual-hash hash)
           (throw (ex-info "Hash mismatch" {:actual-hash actual-hash :expected-hash hash :item m}))
           (when-not (@existing hash)

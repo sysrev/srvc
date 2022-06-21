@@ -1,7 +1,6 @@
 #!/usr/bin/env bb
 
-(ns gen
-  (:require [babashka.deps :as deps]))
+(require '[babashka.deps :as deps])
 
 (deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
 

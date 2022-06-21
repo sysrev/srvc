@@ -1,8 +1,7 @@
 #!/usr/bin/env bb
 
-(ns map
-  (:require [babashka.deps :as deps]
-            [clojure.string :as str]))
+(require '[babashka.deps :as deps]
+         '[clojure.string :as str])
 
 (deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
 
