@@ -66,9 +66,11 @@
     (table ["Document" "Inclusion"]
            (article-rows @dtm))]))
 
-(defn answer-table [{:keys [by-hash doc-to-answers]} doc-hash]
+(defn answer-table [{:keys [by-hash doc-to-answers]} doc-hash reviewer]
   (table ["Label" "Answer"]
-         (for [{{:keys [answer label]} :data} (doc-to-answers doc-hash)]
+         (for [{{:keys [answer label]} :data} (->> (doc-to-answers doc-hash)
+                                                   (filter #(-> % :data :reviewer
+                                                                (= reviewer))))]
            [(-> label by-hash :data :question)
             answer])))
 
@@ -77,14 +79,15 @@
 
 (defn event-seq [{:keys [by-hash raw] :as dt}]
   (distinct
-   (for [{:keys [data type uri] :as item} (some-> raw rseq)]
+   (for [{:keys [data type] :as item} (some-> raw rseq)]
      [(case type
         "document" (str "New document: " (doc-title item))
         "label" (str "New label: " (:question data))
-        "label-answer" [:div (str (-> data :reviewer user-display)
-                                  " labeled "
-                                  (-> data :document by-hash doc-title))
-                        (answer-table dt (:document data))]
+        "label-answer" (let [{:keys [document reviewer]} data]
+                         [:div (str (user-display reviewer)
+                                    " labeled "
+                                    (-> document by-hash doc-title))
+                          (answer-table dt document reviewer)])
         (pr-str item))])))
 
 (defn event-table [data]
