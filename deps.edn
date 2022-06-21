@@ -1,4 +1,4 @@
-{:paths ["src"]
+{:paths ["resources" "src"]
  :deps {co.insilica/canonical-json
         {:git/sha "3981de518b23adbfcb5116e99a9decef625eeb3f"
          :git/url "https://github.com/insilica/canonical-json"}

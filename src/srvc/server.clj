@@ -14,10 +14,8 @@
   [:head
    [:meta {:charset "UTF-8"}]
    [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}]
-   [:script {:src "https://cdn.tailwindcss.com"}]
-   [:script {:crossorigin "anonymous"
-             :integrity "sha384-EzBXYPt0/T6gxNp0nuPtLkmRpmDBbjg6WmCUZRLXBBwYYmwAUxzlSGej0ARHX0Bo"
-             :src "https://unpkg.com/htmx.org@1.7.0"}]])
+   [:script {:src "/js/tailwind-3.1.3.min.js"}]
+   [:script {:src "/js/htmx-1.7.0.min.js"}]])
 
 (defn page [body]
   [:html
@@ -189,7 +187,8 @@
 (defn start! [data-file]
   (let [dtm (atom (load-data data-file))]
     (server/run-server #((-> (routes dtm data-file)
-                             rr/router rr/ring-handler)
+                             rr/router
+                             (rr/ring-handler (rr/create-resource-handler {:path "/"})))
                          %))))
 
 (defn -main [data-file]
