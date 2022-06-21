@@ -55,7 +55,7 @@
 
 (defn article-rows [{:keys [raw]}]
   (->> (filter (comp #{"document"} :type) raw)
-       (map (fn [{:keys [data uri] :as doc}]
+       (map (fn [doc]
               [(doc-title doc) "Yes"]))))
 
 (defn articles [dtm]
