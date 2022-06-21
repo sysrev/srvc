@@ -1,19 +1,13 @@
 #!/usr/bin/env bb
 
-(load-file "hash.clj")
-
 (ns map
-  (:require [clojure.java.io :as io]
-            [clojure.string :as str]
-            [insilica.canonical-json :as json]))
+  (:require [babashka.deps :as deps]
+            [clojure.string :as str]))
 
-(defn unix-time []
-  (quot (System/currentTimeMillis) 1000))
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
 
-(defn write-json [m writer]
-  (json/write m writer)
-  (.write writer "\n")
-  (.flush writer))
+(require '[insilica.canonical-json :as json]
+         '[srvc.bb :as sb])
 
 (defmulti read-answer :type)
 
@@ -55,39 +49,34 @@
 (defn read-answers [labels]
   (when (seq labels)
     (loop [answers {}
-           [{:keys [id inclusion-values] :as label} & more] labels]
-      (let [answer (read-answer label)
-            answers (assoc answers id answer)]
+           [{:keys [data hash]}
+            & more] labels]
+      (let [{:keys [inclusion_values]} data
+            answer (read-answer data)
+            answers (assoc answers hash answer)]
         (println)
         (if (or (empty? more)
-                (and (seq inclusion-values)
-                     (not (some (partial = answer) inclusion-values))))
+                (and (seq inclusion_values)
+                     (not (some (partial = answer) inclusion_values))))
           answers
           (recur answers more))))))
 
-(let [[config-file outfile infile] *command-line-args*
-      {:keys [current_step labels reviewer]} (json/read-str (slurp config-file) :key-fn keyword)
-      labels-map (->> (map (juxt :id identity) labels)
-                      (into {}))
-      step-labels (->> current_step :labels distinct
-                       (map labels-map))]
-  (with-open [writer (io/writer outfile)]
-    (doseq [line (-> infile io/reader line-seq)
-            :let [{:keys [data hash type uri] :as m} (json/read-str line :key-fn keyword)]]
-      (.write writer line)
-      (.write writer "\n")
-      (.flush writer)
-      (when (= "document" type)
-        (when data
-          (json/write data *out*)
-          (println))
-        (some-> uri println)
-        (doseq [[k v] (read-answers step-labels)]
-          (-> {:data {:answer v
-                      :document hash
-                      :label (hash/hash {:data (get labels-map k) :type "label"})
-                      :reviewer reviewer
-                      :timestamp (unix-time)}
-               :type "label-answer"}
-              hash/add-hash
-              (write-json writer)))))))
+(sb/map
+ (fn [{:keys [current_labels reviewer]}
+      {:keys [data hash type uri] :as event}]
+   (if-not (= "document" type)
+     [event]
+     (do
+       (when data
+         (json/write data *out*)
+         (println))
+       (some-> uri println)
+       (->> (read-answers current_labels)
+            (map (fn [[label-hash answer]]
+                   {:data {:answer answer
+                           :document hash
+                           :label label-hash
+                           :reviewer reviewer
+                           :timestamp (sb/unix-time)}
+                    :type "label-answer"}))
+            (cons event))))))

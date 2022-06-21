@@ -4,13 +4,13 @@ db: "sink.jsonl"
 reviewer: mailto:user@example.com
 
 labels:
-  - id: include
+  include:
     type: boolean
-    inclusion-values:
+    inclusion_values:
       - true
     question: Include?
     required: true
-  - id: organ
+  organ:
     type: categorical
     categories:
       - heart/cardiovascular

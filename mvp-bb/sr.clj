@@ -1,15 +1,18 @@
 #!/usr/bin/env bb
 
-(load-file "hash.clj")
-
 (ns sr
   (:require [babashka.curl :as curl]
+            [babashka.deps :as deps]
             [babashka.fs :as fs]
             [babashka.process :as p]
             [clj-yaml.core :as yaml]
             [clojure.java.io :as io]
-            [clojure.string :as str]
-            [insilica.canonical-json :as json]))
+            [clojure.string :as str]))
+
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:local/root "/home/john/src/bb-srvc"}}})
+
+(require '[insilica.canonical-json :as json]
+         '[srvc.bb :as sb])
 
 (def default-opts
   {:inherit true
@@ -26,14 +29,16 @@
   path)
 
 ;; TODO #4 'type' should be wrapped into json-schema.
-(defn canonical-label [label]
+(defn canonical-label [id label]
   (-> label
-      (update :id str/lower-case)
+      (assoc :id (str/lower-case id))
       (update :required boolean)
       (update :type str/lower-case))) 
 
 (defn parse-labels [labels]
-  (mapv canonical-label labels))
+  (->> labels
+       (map (fn [[k v]] [k (canonical-label k v)]))
+       (into {})))
 
 (defn get-config [filename]
   (-> filename slurp yaml/parse-string
@@ -42,10 +47,17 @@
 (defn usage []
   (println "Usage: sr review flow-id"))
 
+(defn step-labels [{:keys [labels]} step]
+  (->> step :labels
+       (map #(sb/add-hash {:data (labels (keyword %)) :type "label"}))))
+
+(defn step-config [config step]
+  (cond-> (assoc config :current_step step)
+    (seq (:labels step)) (assoc :current_labels (step-labels config step))))
+
 (defn write-step-config [config dir step]
   (let [config-json (str (fs/path dir (str (random-uuid) ".json")))]
-    (-> config
-        (assoc :current_step step)
+    (-> (step-config config step)
         json/write-str
         (->> (spit config-json)))
     config-json))
