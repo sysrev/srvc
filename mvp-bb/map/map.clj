@@ -24,7 +24,7 @@
         (empty? response) (recur)
         (str/starts-with? "yes" response) true
         (str/starts-with? "no" response) false
-        (and required (str/starts-with? "skip" response)) nil
+        (and (not required) (str/starts-with? "skip" response)) nil
         :else (recur)))))
 
 (defmethod read-answer "categorical"
