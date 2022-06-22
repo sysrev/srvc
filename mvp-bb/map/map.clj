@@ -45,6 +45,17 @@
           (<= 1 response (count categories)) (nth categories (dec response))
           :else (recur))))))
 
+(defmethod read-answer "string"
+  [{:keys [categories question required]}]
+  (println question)
+  (loop []
+    (print "? ")
+    (flush)
+    (let [response (str/trim (read-line))]
+      (if (and required (str/blank? response))
+        (recur)
+        response))))
+
 (defn read-answers [labels]
   (when (seq labels)
     (loop [answers {}
