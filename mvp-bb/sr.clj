@@ -86,6 +86,28 @@
           (.flush writer))))
     in-file))
 
+(defn docker-volume [filename]
+  (if (fs/absolute? filename)
+    (str "type=bind,src=" filename ",dst=" filename)
+    (str "type=bind,src=" (fs/absolutize filename)
+         ",dst=" (str "/" filename))))
+
+(defn docker-volumes [filenames]
+  (mapcat #(do ["--mount" (docker-volume %)]) filenames))
+
+(defn step-process [dir {:keys [image run]} args]
+  (if-not image
+    (process (into ["perl" run] args))
+    (let [docker-run-args ["docker" "run" "--rm"
+                           "-v" (str dir ":" dir)
+                           "-it" image]
+          run-file (-> (fs/path dir (str (random-uuid))))]
+      (if-not run
+        (process docker-run-args)
+        (do
+          (fs/copy run run-file)
+          (process (concat docker-run-args ["perl" run-file] args)))))))
+
 (defn push-to-target [in-source out-file]
   (when-not (or (remote-target? out-file) (fs/exists? out-file))
     (-> out-file fs/absolutize fs/parent fs/create-dirs)
@@ -93,14 +115,14 @@
   (fs/with-temp-dir [dir {:prefix "srvc"}]
     (let [config (-> (get-config "sr.yaml")
                      (assoc :db out-file))
-          {:keys [run] :as step} (if (remote-target? out-file)
-                                   remote-sink-step
-                                   default-sink-step)
+          step (if (remote-target? out-file)
+                 remote-sink-step
+                 default-sink-step)
           config-json (write-step-config config dir step)
           in-file (if (remote-target? in-source)
                     (make-remote-in-file in-source dir)
                     in-source)]
-      @(process ["perl" run config-json in-file]))))
+      @(step-process dir step [config-json in-file]))))
 
 (defn pull [target]
   (let [{:keys [db]} (get-config "sr.yaml")]
@@ -121,14 +143,14 @@
           steps (concat steps [(if (remote-target? db)
                                  remote-sink-step
                                  default-sink-step)])]
-      (loop [[{:keys [run] :as step} & more] steps
+      (loop [[step & more] steps
              in-file nil]
         (let [config-json (write-step-config config dir step)]
           (if more
             (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
-              (process ["perl" run config-json out-file in-file])
+              (step-process dir step [config-json out-file in-file])
               (recur more out-file))
-            @(process ["perl" run config-json in-file])))))))
+            @(step-process dir step [config-json in-file])))))))
 
 (let [[command & args] *command-line-args*
       command (some-> command str/lower-case)]
