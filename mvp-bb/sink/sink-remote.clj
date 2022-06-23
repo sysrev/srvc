@@ -5,7 +5,7 @@
            '[clojure.java.io :as io]
            '[clojure.string :as str])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.2.0"}}})
 
 (require '[insilica.canonical-json :as json]
          '[srvc.bb :as sb])

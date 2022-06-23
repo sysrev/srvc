@@ -2,7 +2,7 @@
 
 (require '[babashka.deps :as deps])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.1.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.2.0"}}})
 
 (require '[srvc.bb :as sb])
 
