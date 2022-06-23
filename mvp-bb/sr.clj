@@ -99,6 +99,7 @@
   (if-not image
     (process (into ["perl" run] args))
     (let [docker-run-args ["docker" "run" "--rm"
+                           "--network=host"
                            "-v" (str dir ":" dir)
                            "-it" image]
           run-file (-> (fs/path dir (str (random-uuid))))]
