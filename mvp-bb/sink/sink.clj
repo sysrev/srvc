@@ -24,6 +24,15 @@
     (.write writer "\n")
     (.flush writer)))
 
+(defn read-json-line [line]
+  (try
+    (json/read-str line :key-fn keyword)
+    (catch Exception e
+      (throw
+       (ex-info (str "Malformed JSON: " (ex-message e))
+                {:line line}
+                e)))))
+
 (let [[config-file infile] *command-line-args*
       {:keys [db labels]} (json/read-str (slurp config-file) :key-fn keyword)]
   (with-open [writer (io/writer db :append true)]
@@ -33,7 +42,7 @@
           (write-item label writer @existing)
           (swap! existing conj (:hash label))))
       (doseq [line (-> infile io/reader line-seq)
-              :let [{:keys [hash] :as m} (json/read-str line :key-fn keyword)
+              :let [{:keys [hash] :as m} (read-json-line line)
                     actual-hash (sb/json-hash m)]]
         (if (not= actual-hash hash)
           (throw (ex-info "Hash mismatch" {:actual-hash actual-hash :expected-hash hash :item m}))
