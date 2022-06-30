@@ -38,7 +38,7 @@
       (when-not (= 404 (:status (ex-data e)))
         (throw e)))))
 
-(let [[config-file outfile infile] *command-line-args*
+(let [[config-file infile outfile] *command-line-args*
       {:keys [db reviewer]} (json/parse-string (slurp config-file) true)
       reviewed? (if (remote-target? db)
                   (partial remote-reviewed? db reviewer)

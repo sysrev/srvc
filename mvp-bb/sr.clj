@@ -95,19 +95,22 @@
 (defn docker-volumes [filenames]
   (mapcat #(do ["--mount" (docker-volume %)]) filenames))
 
-(defn step-process [dir {:keys [image run]} args]
-  (if-not image
-    (process (into ["perl" run] args))
-    (let [docker-run-args ["docker" "run" "--rm"
-                           "--network=host"
-                           "-v" (str dir ":" dir)
-                           "-it" image]
-          run-file (-> (fs/path dir (str (random-uuid))))]
-      (if-not run
-        (process docker-run-args)
-        (do
-          (fs/copy run run-file)
-          (process (concat docker-run-args ["perl" run-file] args)))))))
+(defn step-process [dir
+                    {:keys [image run]}
+                    {:keys [config-json in-file out-file]}]
+  (let [args (filter identity [config-json in-file out-file])]
+    (if-not image
+      (process (into ["perl" run] args))
+      (let [docker-run-args ["docker" "run" "--rm"
+                             "--network=host"
+                             "-v" (str dir ":" dir)
+                             "-it" image]
+            run-file (-> (fs/path dir (str (random-uuid))))]
+        (if-not run
+          (process docker-run-args)
+          (do
+            (fs/copy run run-file)
+            (process (concat docker-run-args ["perl" run-file] args))))))))
 
 (defn push-to-target [in-source out-file]
   (when-not (or (remote-target? out-file) (fs/exists? out-file))
@@ -149,9 +152,12 @@
         (let [config-json (write-step-config config dir step)]
           (if more
             (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
-              (step-process dir step [config-json out-file in-file])
+              (step-process dir step {:config-json config-json
+                                      :in-file in-file
+                                      :out-file out-file})
               (recur more out-file))
-            @(step-process dir step [config-json in-file])))))))
+            @(step-process dir step {:config-json config-json
+                                     :in-file in-file})))))))
 
 (let [[command & args] *command-line-args*
       command (some-> command str/lower-case)]
