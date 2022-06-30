@@ -108,6 +108,9 @@
       (let [docker-run-args ["docker" "run" "--rm"
                              "--network=host"
                              "-v" (str dir ":" dir)
+                             "-e" (str "SR_CONFIG=" config-json)
+                             "-e" (str "SR_INPUT=" in-file)
+                             "-e" (str "SR_OUTPUT=" out-file)
                              "-it" image]
             run-file (-> (fs/path dir (str (random-uuid))))]
         (if-not run
