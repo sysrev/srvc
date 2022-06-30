@@ -38,7 +38,9 @@
       (when-not (= 404 (:status (ex-data e)))
         (throw e)))))
 
-(let [[config-file infile outfile] *command-line-args*
+(let [config-file (System/getenv "SR_CONFIG")
+      infile (System/getenv "SR_INPUT")
+      outfile (System/getenv "SR_OUTPUT")
       {:keys [db reviewer]} (json/parse-string (slurp config-file) true)
       reviewed? (if (remote-target? db)
                   (partial remote-reviewed? db reviewer)

@@ -3,7 +3,7 @@
 (require '[babashka.deps :as deps]
          '[clojure.java.io :as io])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.3.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.4.0"}}})
 
 (require '[insilica.canonical-json :as json]
          '[srvc.bb :as sb])
@@ -33,7 +33,8 @@
                 {:line line}
                 e)))))
 
-(let [[config-file infile] *command-line-args*
+(let [config-file (System/getenv "SR_CONFIG")
+      infile (System/getenv "SR_INPUT")
       {:keys [db labels]} (json/read-str (slurp config-file) :key-fn keyword)]
   (with-open [writer (io/writer db :append true)]
     (let [existing (atom (existing-hashes db))]

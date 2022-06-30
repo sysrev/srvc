@@ -5,7 +5,7 @@
          '[clojure.string :as str]
          '[org.httpkit.client :as http])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.3.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.4.0"}}})
 
 (require '[insilica.canonical-json :as json]
          '[srvc.bb :as sb])
@@ -50,7 +50,8 @@
   (flush)
   (read-line))
 
-(let [[config-file outfile] *command-line-args*
+(let [config-file (System/getenv "SR_CONFIG")
+      outfile (System/getenv "SR_OUTPUT")
       {:keys [current_step]} (json/read-str (slurp config-file) :key-fn keyword)
       search-term (some-> current_step :config :search_term str/trim)
       query (or search-term (read-search-term))]
