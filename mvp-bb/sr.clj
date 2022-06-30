@@ -99,19 +99,22 @@
 (defn step-process [dir
                     {:keys [image run]}
                     {:keys [config-json in-file out-file]}]
-  (let [args (filter identity [config-json in-file out-file])]
+  (let [args (filter identity [config-json in-file out-file])
+        opts {:extra-env {"SR_CONFIG" config-json
+                          "SR_INPUT" in-file
+                          "SR_OUTPUT" out-file}}]
     (if-not image
-      (process (into ["perl" run] args))
+      (process (into ["perl" run] args) opts)
       (let [docker-run-args ["docker" "run" "--rm"
                              "--network=host"
                              "-v" (str dir ":" dir)
                              "-it" image]
             run-file (-> (fs/path dir (str (random-uuid))))]
         (if-not run
-          (process docker-run-args)
+          (process docker-run-args opts)
           (do
             (fs/copy run run-file)
-            (process (concat docker-run-args ["perl" run-file] args))))))))
+            (process (concat docker-run-args ["perl" run-file] args) opts)))))))
 
 (defn push-to-target [in-source out-file]
   (when-not (or (remote-target? out-file) (fs/exists? out-file))
