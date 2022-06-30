@@ -152,11 +152,23 @@
              in-file nil]
         (let [config-json (write-step-config config dir step)]
           (if more
-            (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
+            (let [out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)
+                  add-hashes-step {:run (-> *file*
+                                            fs/real-path ; Resolve symlinks
+                                            fs/parent
+                                            (fs/path "map" "add-hashes.clj")
+                                            str)}
+                  add-hashes-config-json (write-step-config config dir add-hashes-step)
+                  add-hashes-out-file (-> (fs/path dir (str (random-uuid) ".fifo")) make-fifo str)]
               (step-process dir step {:config-json config-json
                                       :in-file in-file
                                       :out-file out-file})
-              (recur more out-file))
+              (step-process dir
+                            add-hashes-step
+                            {:config-json add-hashes-config-json
+                             :in-file out-file
+                             :out-file add-hashes-out-file})
+              (recur more add-hashes-out-file))
             @(step-process dir step {:config-json config-json
                                      :in-file in-file})))))))
 
