@@ -33,7 +33,8 @@
   (-> label
       (assoc :id (str/lower-case (name id)))
       (update :required boolean)
-      (update :type str/lower-case))) 
+      (update :type str/lower-case)
+      sb/add-hash)) 
 
 (defn parse-labels [labels]
   (->> labels
