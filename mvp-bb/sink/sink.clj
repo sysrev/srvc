@@ -3,7 +3,7 @@
 (require '[babashka.deps :as deps]
          '[clojure.java.io :as io])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.4.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.5.0"}}})
 
 (require '[insilica.canonical-json :as json]
          '[srvc.bb :as sb])
