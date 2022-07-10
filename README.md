@@ -13,16 +13,14 @@ ln $(pwd)/sr.clj /usr/local/bin/sr # add to path
 
 Alternatively, many srvc repos have a docker container with run instructions.
 # Run
-sr runs git based reviews (sysrev). To use it, we need a repo:
-```
+sr runs git based reviews (sysrevs). To use it, we need a repo:
+```sh
 git clone https://github.com/sysrev/srvc-hello.git srvc-hello && cd $_
 ```
-run a review flow 
+```sh
+sr review simple   # run a simple text flow 
 ```
-sr review simple
-```
-Run the annotation flow
-```
-sr review annotate
+```sh
+sr review annotate # run a recogito review server 
 ```
 View other flows in the srvc config file `sr.yaml`. 
