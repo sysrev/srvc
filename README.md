@@ -1,7 +1,5 @@
 # Installation
-HomeBrew install is coming in [#7](https://github.com/sysrev/srvc/issues/7).  
-
-For now, install [homebrew](https://brew.sh), and use:
+Install [homebrew](https://brew.sh) (a brew install is coming in [#7](https://github.com/sysrev/srvc/issues/7)), and use:
 
 ```sh
 brew install borkdude/brew/babashka
