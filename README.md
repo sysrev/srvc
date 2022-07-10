@@ -1,50 +1,30 @@
-# Standalone  
-Every sysrev is a composition of processes. /mvp was my first shot, but incomplete.
+# Installation
+HomeBrew install is coming in [#7](https://github.com/sysrev/srvc/issues/7).  
 
-```
-> tree -L 1 my-project
-.
-├── .sr [/cache/, /config]
-├── gen/...  # depends on nothing  , generates stream
-├── map/...  # depends on stream(s), generates stream
-├── sink/... # depends on stream(s), generates nothing
-├── sr.yaml # dag definition
-```
+For now, install [homebrew](https://brew.sh), and use:
 
-**sr.yaml**  
-A `sysrev` stream take a pubmed generator, prioritizes it, reviews it and sinks to sqlite. **[fifo](https://man7.org/linux/man-pages/man7/fifo.7.html)** may work for sharing process streams.
-```yaml
-flows:
-  my-sysrev:
-    gen: [{cmd: "gen/pubmed.sh", params: ..., fifo: "pm.fifo"}]
-    rev:
-      - {cmd: "rev/pty.sh", deps: ["gen/pm.fifo"],  fifo: "pty.fifo"}
-      - {cmd: "rev/rev.sh", deps: ["gen/pty.fifo"], fifo: "rev.fifo"}
-    snk:
-      - {cmd: "snk/sql.sh", deps: "rev.fifo", out: [sqlite.db]}
+```sh
+brew install borkdude/brew/babashka
+```
+```sh
+git clone https://github.com/sysrev/srvc.git srvc && cd $_/mvp-bb
+```
+```sh
+ln $(pwd)/sr.clj /usr/local/bin/sr # add to path
 ```
 
-**deploy**  
-`sr review my-sysrev` runs the named flow by launching each process.
+Alternatively, many srvc repos have a docker container with run instructions.
+# Run
+sr runs git based reviews (sysrev). To use it, we need a repo:
 ```
-> sr review sysrev
-# mkfifo pm.fifo
-# gen/pubmed.sh > pm.fifo
-#
-# mkfifo pty.fifo
-# rev/pty.sh pm.fifo > pty.fifo
-#
-# mkfifo rev.fifo
-# rev/rev.sh pty.fifo > rev.fifo
-# 
-# snk/sql.sh rev.fifo
+git clone https://github.com/sysrev/srvc-hello.git srvc-hello && cd $_
 ```
-
-**thoughts**  
-1. Some review steps may start UI processes.
-2. A standard sink assigns a user+label+answer to a generator entity
-3. Generators could be reused anywhere (even non-sysrev applications)
-4. flows could potentially read from the sink (needed for prioritization)
-5. A docker image could be hosted that normalizes some dependencies
-
-
+run a review flow 
+```
+sr review simple
+```
+Run the annotation flow
+```
+sr review annotate
+```
+View other flows in the srvc config file `sr.yaml`. 
