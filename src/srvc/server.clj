@@ -1,8 +1,8 @@
 (ns srvc.server
   (:refer-clojure :exclude [hash])
-  (:require [clojure.java.io :as io]
+  (:require [clojure.data.json :as json]
+            [clojure.java.io :as io]
             [hiccup.core :as h]
-            [insilica.canonical-json :as json]
             [lambdaisland.uri :as uri]
             [org.httpkit.server :as server]
             [reitit.core :as re]
