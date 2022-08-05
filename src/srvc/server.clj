@@ -36,6 +36,15 @@
       [:li [:a {:href "/"} "Articles"]]]]]
    content))
 
+(defn not-found []
+  {:status 404
+   :headers {"Content-Type" "text/html"}
+   :body (list "<!doctype html>"
+               (h/html
+                (page
+                 (body [:div [:h1 {:class "text-2xl text-bold text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
+                              "404 Not Found"]]))))})
+
 (defn table-head [col-names]
   [:thead {:class "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
    (into [:tr]
@@ -192,11 +201,18 @@
       (reduce add-data {} items))
     (catch java.io.FileNotFoundException _)))
 
+(defn default-handler []
+  (rr/create-resource-handler
+   {:not-found-handler
+    (rr/create-default-handler
+     {:not-found (constantly (not-found))})
+    :path "/"}))
+
 (defn start! [data-file]
   (let [dtm (atom (load-data data-file))]
     (server/run-server #((-> (routes dtm data-file)
                              rr/router
-                             (rr/ring-handler (rr/create-resource-handler {:path "/"})))
+                             (rr/ring-handler (default-handler)))
                          %))))
 
 (defn -main [data-file]
