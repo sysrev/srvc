@@ -27,6 +27,15 @@
    :headers {"Content-Type" "text/html"}
    :body (list "<!doctype html>" (h/html (page body)))})
 
+(defn body [& content]
+  (into
+   [:body {:class "dark:bg-gray-900"}
+    [:div
+     [:ul {:class "text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
+      [:li [:a {:href "/activity"} "Activity"]]
+      [:li [:a {:href "/"} "Articles"]]]]]
+   content))
+
 (defn table-head [col-names]
   [:thead {:class "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
    (into [:tr]
@@ -60,9 +69,9 @@
 
 (defn articles [dtm]
   (response
-   [:body {:class "dark:bg-gray-900"}
+   (body
     (table ["Document" "Inclusion"]
-           (article-rows @dtm))]))
+           (article-rows @dtm)))))
 
 (defn answer-table [{:keys [by-hash doc-to-answers]} doc-hash reviewer]
   (table ["Label" "Answer"]
@@ -95,9 +104,9 @@
 
 (defn activity [_request dtm]
   (response
-   [:body {:class "dark:bg-gray-900"}
+   (body
     [:div {:hx-ws "connect:/hx/activity"}
-     (event-table @dtm)]]))
+     (event-table @dtm)])))
 
 (defn hx-activity [request dtm]
   (let [watch-key (str (random-uuid))]
@@ -108,7 +117,6 @@
                  (server/send! ch {:status 200 :body (h/html (event-table @dtm))} false)
                  (add-watch dtm watch-key
                             (fn [_ _ _ data]
-                              (prn {:body (h/html (event-table data))})
                               (server/send! ch {:body (h/html (event-table data))} false))))})))
 
 (defn hash [request dtm]
