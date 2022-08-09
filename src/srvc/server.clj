@@ -6,7 +6,8 @@
             [lambdaisland.uri :as uri]
             [org.httpkit.server :as server]
             [reitit.core :as re]
-            [reitit.ring :as rr]))
+            [reitit.ring :as rr]
+            [srvc.server.review :as review]))
 
 (defonce write-lock (Object.))
 
@@ -208,13 +209,14 @@
      {:not-found (constantly (not-found))})
     :path "/"}))
 
-(defn start! [data-file]
-  (let [dtm (atom (load-data data-file))]
-    (server/run-server #((-> (routes dtm data-file)
+(defn start! [& [config-file]]
+  (let [{:keys [db]} (review/load-config (or config-file "sr.yaml"))
+        dtm (atom (load-data db))]
+    (server/run-server #((-> (routes dtm db)
                              rr/router
                              (rr/ring-handler (default-handler)))
                          %))))
 
-(defn -main [data-file]
+(defn -main [& [data-file]]
   (start! data-file)
   (Thread/sleep Long/MAX_VALUE))

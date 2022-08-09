@@ -1,5 +1,6 @@
 {:paths ["resources" "src"]
- :deps {hiccup/hiccup {:mvn/version "1.0.5"}
+ :deps {babashka/process {:mvn/version "0.1.7"}
+        hiccup/hiccup {:mvn/version "1.0.5"}
         http-kit/http-kit {:mvn/version "2.6.0"}
         lambdaisland/uri {:mvn/version "1.13.95"}
         metosin/reitit {:mvn/version "0.5.18"}
