@@ -11,7 +11,7 @@ This example generates 10 documents, from `{:i 1}` to `{:i 10}`:
 
 (require '[babashka.deps :as deps])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.5.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.7.0"}}})
 
 (require '[srvc.bb :as sb])
 
@@ -33,7 +33,7 @@ Numbers are processed as BigDecimals for consistency, so `i` is converted to a B
 
 (require '[babashka.deps :as deps])
 
-(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.5.0"}}})
+(deps/add-deps '{:deps {co.insilica/bb-srvc {:mvn/version "0.7.0"}}})
 
 (require '[srvc.bb :as sb])
 
