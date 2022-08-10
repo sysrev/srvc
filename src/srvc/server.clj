@@ -1,6 +1,7 @@
 (ns srvc.server
   (:refer-clojure :exclude [hash])
-  (:require [clojure.data.json :as json]
+  (:require [babashka.process :as p]
+            [clojure.data.json :as json]
             [clojure.java.io :as io]
             [hiccup.core :as h]
             [lambdaisland.uri :as uri]
@@ -34,7 +35,8 @@
     [:div
      [:ul {:class "text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
       [:li [:a {:href "/activity"} "Activity"]]
-      [:li [:a {:href "/"} "Articles"]]]]]
+      [:li [:a {:href "/"} "Articles"]]
+      [:li [:a {:href "/review"} "Review"]]]]]
    content))
 
 (defn not-found []
@@ -170,23 +172,33 @@
       (update-in [:doc-to-answers (-> item :data :document)]
                  (fnil conj []) item))))
 
-(defn upload [request dtm data-file]
-  (locking [write-lock]
+(defn add-events! [dtm data-file events]
+  (locking write-lock
     (with-open [writer (io/writer data-file :append true)]
-      (doseq [{:keys [hash] :as item} (some->> request :body
-                                               io/reader line-seq
-                                               (map #(json/read-str % :key-fn keyword)))]
+      (doseq [{:keys [hash] :as item} events]
         (when-not (get (:by-hash @dtm) hash)
           (json/write item writer)
           (.write writer "\n")
-          (swap! dtm add-data item)))))
+          (swap! dtm add-data item))))))
+
+(defn upload [request dtm data-file]
+  (some->> request :body io/reader line-seq
+           (map #(json/read-str % :key-fn keyword))
+           (add-events! dtm data-file))
   {:status 201
    :headers {"Content-Type" "application/json"}
    :body "{\"success\":true}"})
 
-(defn routes [dtm data-file]
+(defn review [_request review-port]
+  (response
+   (body
+    [:iframe {:class "h-full w-full bg-white"
+              :src (str "http://127.0.0.1:" review-port)}])))
+
+(defn routes [dtm data-file review-port]
   [["/" {:get #(do % (articles dtm))}]
    ["/activity" {:get #(activity % dtm)}]
+   ["/review" {:get #(review % review-port)}]
    ["/hx"
     ["/activity" {:get #(hx-activity % dtm)}]]
    ["/api/v1"
@@ -209,14 +221,38 @@
      {:not-found (constantly (not-found))})
     :path "/"}))
 
-(defn start! [& [config-file]]
-  (let [{:keys [db]} (review/load-config (or config-file "sr.yaml"))
-        dtm (atom (load-data db))]
-    (server/run-server #((-> (routes dtm db)
-                             rr/router
-                             (rr/ring-handler (default-handler)))
-                         %))))
+(defonce state (atom {}))
 
-(defn -main [& [data-file]]
-  (start! data-file)
+(defn handle-tail-line [dtm db http-port line]
+  (let [{:keys [data type] :as event} (json/read-str line :key-fn keyword)]
+    (if (= "control" type)
+      (when (:http-port data)
+        (deliver http-port (:http-port data)))
+      (add-events! dtm db [event]))))
+
+;; Not thread-safe. For use by -main and at REPL
+(defn start! [flow-name]
+  (let [{:keys [db] :as config} (review/load-config "sr.yaml")
+        dtm (atom (load-data db))
+        http-port (promise)
+        review (review/review-process config flow-name
+                                      (partial handle-tail-line dtm db http-port)
+                                      prn)]
+    (->> {:review review
+          :server (server/run-server #((-> (routes dtm db @http-port)
+                                           rr/router
+                                           (rr/ring-handler (default-handler)))
+                                       %))}
+         (reset! state))))
+
+;; Not thread-safe. For use by -main and at REPL
+#_:clj-kondo/ignore
+(defn stop! []
+  (let [{:keys [review server]} @state]
+    (server)
+    (p/destroy-tree review)
+    (reset! state nil)))
+
+(defn -main [flow-name]
+  (start! flow-name)
   (Thread/sleep Long/MAX_VALUE))
