@@ -237,12 +237,18 @@
         http-port (promise)
         review (review/review-process config flow-name
                                       (partial handle-tail-line dtm db http-port)
-                                      prn)]
+                                      prn)
+        proxy-port 8091
+        http-port (or (deref http-port 30000 nil)
+                      (throw (Exception. "Timed out waiting on http-port from review process")))
+        review-proxy (review/proxy-server http-port proxy-port)
+        server (server/run-server #((-> (routes dtm db proxy-port)
+                                        rr/router
+                                        (rr/ring-handler (default-handler)))
+                                    %))]
     (->> {:review review
-          :server (server/run-server #((-> (routes dtm db @http-port)
-                                           rr/router
-                                           (rr/ring-handler (default-handler)))
-                                       %))}
+          :review-proxy review-proxy
+          :server server}
          (reset! state))))
 
 ;; Not thread-safe. For use by -main and at REPL

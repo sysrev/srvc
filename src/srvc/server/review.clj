@@ -2,7 +2,8 @@
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
             [clj-yaml.core :as yaml]
-            [clojure.java.io :as io])
+            [clojure.java.io :as io]
+            [hyperlight.http-proxy :as http-proxy])
   (:import [org.apache.commons.io.input Tailer TailerListener]))
 
 (def default-opts
@@ -52,3 +53,12 @@
      :sink-path sink
      :sink-thread (-> (tailer add-events! tail-exception! sink) start-daemon)
      :temp-dir temp-dir}))
+
+(defn proxy-handler [forward-port]
+  (http-proxy/create-handler
+   {:url (str "http://localhost:" forward-port)}))
+
+(defn proxy-server [forward-port listen-port]
+  (http-proxy/start-server
+   (proxy-handler forward-port)
+   {:port listen-port}))
