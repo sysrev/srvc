@@ -192,7 +192,8 @@
 (defn review [_request review-port]
   (response
    (body
-    [:iframe {:class "h-full w-full bg-white"
+    [:iframe {:class "w-full bg-white"
+              :style "height: 90vh"
               :src (str "http://127.0.0.1:" review-port)}])))
 
 (defn routes [dtm data-file review-port]
