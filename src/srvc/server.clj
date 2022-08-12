@@ -91,7 +91,7 @@
                                                    (filter #(-> % :data :reviewer
                                                                 (= reviewer))))]
            [(-> label by-hash :data :question)
-            answer])))
+            (if (string? answer) answer (pr-str answer))])))
 
 (defn user-display [user-uri]
   (some-> user-uri uri/uri (assoc :scheme nil) str))
