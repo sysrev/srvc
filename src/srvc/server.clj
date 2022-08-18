@@ -8,7 +8,9 @@
             [org.httpkit.server :as server]
             [reitit.core :as re]
             [reitit.ring :as rr]
-            [srvc.server.review :as review]))
+            [ring.middleware.session :refer (wrap-session)]
+            [srvc.server.review :as review]
+            [srvc.server.saml :as saml]))
 
 (defonce write-lock (Object.))
 
@@ -29,24 +31,30 @@
    :headers {"Content-Type" "text/html"}
    :body (list "<!doctype html>" (h/html (page body)))})
 
-(defn body [& content]
-  (into
-   [:body {:class "dark:bg-gray-900"}
-    [:div
-     [:ul {:class "text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
-      [:li [:a {:href "/activity"} "Activity"]]
-      [:li [:a {:href "/"} "Articles"]]
-      [:li [:a {:href "/review"} "Review"]]]]]
-   content))
+(defn body [{:keys [session]} & content]
+  (let [{:keys [saml/email]} session]
+    (into
+     [:body {:class "dark:bg-gray-900"}
+      [:div
+       [:ul {:class "text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
+        [:li [:a {:href "/activity"} "Activity"]]
+        [:li [:a {:href "/"} "Articles"]]
+        [:li [:a {:href "/review"} "Review"]]
+        (if email
+          [:li [:a {:href "/saml/logout"} "Log Out (" email ")"]]
+          [:li [:a {:href "/saml/login"} "Log In"]])]]]
+     content)))
 
-(defn not-found []
+(defn not-found [request]
   {:status 404
    :headers {"Content-Type" "text/html"}
    :body (list "<!doctype html>"
                (h/html
                 (page
-                 (body [:div [:h1 {:class "text-2xl text-bold text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
-                              "404 Not Found"]]))))})
+                 (body
+                  request
+                  [:div [:h1 {:class "text-2xl text-bold text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
+                         "404 Not Found"]]))))})
 
 (defn table-head [col-names]
   [:thead {:class "text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
@@ -79,9 +87,10 @@
        (map (fn [doc]
               [(doc-title doc) "Yes"]))))
 
-(defn articles [dtm]
+(defn articles [request dtm]
   (response
    (body
+    request
     (table ["Document" "Inclusion"]
            (article-rows @dtm)))))
 
@@ -114,9 +123,10 @@
    (table ["Event"]
           (take 10 (event-seq data)))])
 
-(defn activity [_request dtm]
+(defn activity [request dtm]
   (response
    (body
+    request
     [:div {:hx-ws "connect:/hx/activity"}
      (event-table @dtm)])))
 
@@ -189,24 +199,27 @@
    :headers {"Content-Type" "application/json"}
    :body "{\"success\":true}"})
 
-(defn review [_request review-port]
+(defn review [request review-port]
   (response
    (body
+    request
     [:iframe {:class "w-full bg-white"
               :style "height: 90vh"
               :src (str "http://127.0.0.1:" review-port)}])))
 
 (defn routes [dtm data-file review-port]
-  [["/" {:get #(do % (articles dtm))}]
-   ["/activity" {:get #(activity % dtm)}]
-   ["/review" {:get #(review % review-port)}]
-   ["/hx"
-    ["/activity" {:get #(hx-activity % dtm)}]]
-   ["/api/v1"
-    ["/document/:id/label-answers" {:get #(doc-answers % dtm)}]
-    ["/hash/:id" {:get #(hash % dtm)}]
-    ["/hashes" {:get #(hashes % dtm)}]
-    ["/upload" {:post #(upload % dtm data-file)}]]])
+  (into
+   [["/" {:get #(articles % dtm)}]
+    ["/activity" {:get #(activity % dtm)}]
+    ["/review" {:get #(review % review-port)}]
+    ["/hx"
+     ["/activity" {:get #(hx-activity % dtm)}]]
+    ["/api/v1"
+     ["/document/:id/label-answers" {:get #(doc-answers % dtm)}]
+     ["/hash/:id" {:get #(hash % dtm)}]
+     ["/hashes" {:get #(hashes % dtm)}]
+     ["/upload" {:post #(upload % dtm data-file)}]]]
+   (saml/routes "http://127.0.0.1:8090")))
 
 (defn load-data [filename]
   (try
@@ -219,7 +232,7 @@
   (rr/create-resource-handler
    {:not-found-handler
     (rr/create-default-handler
-     {:not-found (constantly (not-found))})
+     {:not-found not-found})
     :path "/"}))
 
 (defonce state (atom {}))
@@ -243,10 +256,11 @@
         http-port (or (deref http-port 30000 nil)
                       (throw (Exception. "Timed out waiting on http-port from review process")))
         review-proxy (review/proxy-server http-port proxy-port)
-        server (server/run-server #((-> (routes dtm db proxy-port)
-                                        rr/router
-                                        (rr/ring-handler (default-handler)))
-                                    %))]
+        server (server/run-server (-> (routes dtm db proxy-port)
+                                      rr/router
+                                      (rr/ring-handler
+                                       (default-handler)
+                                       {:middleware [wrap-session]})))]
     (->> {:review review
           :review-proxy review-proxy
           :server server}
