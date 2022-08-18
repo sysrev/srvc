@@ -1,0 +1,6 @@
+{:host "http://localhost:8090"
+ :port 8090
+ :proxy-host "http://localhost:8091"
+ :proxy-port 8091
+ :saml
+ {:idp-url "http://localhost:8080/simplesaml/saml2/idp/SSOService.php"}}

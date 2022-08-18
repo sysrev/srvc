@@ -1,6 +1,7 @@
 {:paths ["resources" "src"]
  :deps {babashka/process {:mvn/version "0.1.7"}
         clj-commons/clj-yaml {:mvn/version "0.7.108"}
+        club.donutpower/system {:mvn/version "0.0.165"}
         commons-io/commons-io {:mvn/version "2.11.0"}
         hiccup/hiccup {:mvn/version "1.0.5"}
         http-kit/http-kit {:mvn/version "2.6.0"}
@@ -10,4 +11,5 @@
         metabase/saml20-clj {:mvn/version "2.0.2"}
         org.clojure/data.json {:mvn/version "2.4.0"}}
  :aliases
- {:server {:main-opts ["-m" "srvc.server"]}}}
+ {:dev {:extra-paths ["test-resources"]}
+  :server {:main-opts ["-m" "srvc.server"]}}}
