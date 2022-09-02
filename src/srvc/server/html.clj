@@ -23,17 +23,18 @@
 
 (defn body [{:keys [session]} & content]
   (let [{:keys [saml/email]} session]
-    (into
-     [:body {:class "dark:bg-gray-900"}
+    [:body {:class "bg-slate-100 dark:bg-slate-900"}
+     [:div {:class "flex h-screen"}
       [:div
-       [:ul {:class "text-gray-700 bg-gray-50 dark:bg-gray-700 dark:text-gray-400"}
+       [:ul {:class "h-screen w-64 pl-4 pt-4 text-lg text-slate-100 bg-slate-900"}
         [:li [:a {:href "/activity"} "Activity"]]
         [:li [:a {:href "/"} "Articles"]]
         [:li [:a {:href "/review"} "Review"]]
         (if email
           [:li [:a {:href "/saml/logout"} "Log Out (" email ")"]]
-          [:li [:a {:href "/saml/login"} "Log In"]])]]]
-     content)))
+          [:li [:a {:href "/saml/login"} "Log In"]])]]
+      [:div {:class "flex-1 flex flex-col overflow-hidden pt-4"}
+       content]]]))
 
 (defn not-found [request]
   {:status 404
