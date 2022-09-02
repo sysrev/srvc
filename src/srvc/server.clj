@@ -1,3 +1,5 @@
+(require 'hashp.core)
+
 (ns srvc.server
   (:require [clojure.data.json :as json]
             [clojure.edn :as edn]

@@ -3,6 +3,7 @@
         clj-commons/clj-yaml {:mvn/version "0.7.108"}
         club.donutpower/system {:mvn/version "0.0.165"}
         commons-io/commons-io {:mvn/version "2.11.0"}
+        hashp/hashp {:mvn/version "0.2.1"}
         hiccup/hiccup {:mvn/version "1.0.5"}
         http-kit/http-kit {:mvn/version "2.6.0"}
         hyperlight/hyperlight {:mvn/version "0.3.1"}
