@@ -139,7 +139,7 @@
 ;; Not thread-safe. For use by -main and at REPL
 #_:clj-kondo/ignore
 (defn stop! []
-  (swap! state #(signal! % ::ds/stop)))
+  (swap! state #(when % (signal! % ::ds/stop))))
 
 (defn -main [flow-name]
   (start! flow-name)
