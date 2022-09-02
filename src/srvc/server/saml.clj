@@ -72,9 +72,9 @@
   (let [opts {:host host
               :idp-url "http://localhost:8080/simplesaml/saml2/idp/SSOService.php"
               :state-manager (saml/in-memory-state-manager)}]
-    [["/saml"
-      {:middleware [parameters-middleware]}
-      ["/acs" {:post (partial acs opts)}]
-      ["/login" {:get (partial login opts)}]
-      ["/logout" {:get (partial logout opts)}]
-      ["/metadata" {:get (partial metadata opts)}]]]))
+    ["/saml"
+     {:middleware [parameters-middleware]}
+     ["/acs" {:post (partial acs opts)}]
+     ["/login" {:get (partial login opts)}]
+     ["/logout" {:get (partial logout opts)}]
+     ["/metadata" {:get (partial metadata opts)}]]))
