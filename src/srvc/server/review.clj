@@ -3,7 +3,8 @@
             [babashka.process :as p]
             [clj-yaml.core :as yaml]
             [clojure.java.io :as io]
-            [hyperlight.http-proxy :as http-proxy])
+            [hyperlight.http-proxy :as http-proxy]
+            [ring.middleware.session :as session])
   (:import [org.apache.commons.io.input Tailer TailerListener]))
 
 (def default-opts
@@ -14,9 +15,6 @@
 
 (defn process [args & [opts]]
   (p/process args (merge default-opts opts)))
-
-(defn load-config [filename]
-  (yaml/parse-stream (io/reader (fs/file filename))))
 
 (defrecord TailListener [f g]
   TailerListener
@@ -39,8 +37,9 @@
     (.setDaemon true)
     .start))
 
-(defn review-process [config flow-name add-events! tail-exception!]
-  (let [db (:db config)
+(defn review-process [project-name config flow-name add-events! tail-exception!]
+  (let [dir (fs/path project-name)
+        db (some->> config :db (fs/path dir))
         temp-dir (fs/create-temp-dir)
         config-file (fs/path temp-dir (str "config-" (random-uuid) ".yaml"))
         sink (fs/path temp-dir (str "sink-" (random-uuid) ".jsonl"))
@@ -49,16 +48,45 @@
       (yaml/generate-stream writer config))
     (when (fs/exists? db)
       (fs/copy db sink))
-    {:process (process ["sr" "--config" (str config-file) "review" flow-name])
+    {:process (process
+               ["sr" "--config" (str config-file) "review" flow-name]
+               {:dir (str dir)})
      :sink-path sink
      :sink-thread (-> (tailer add-events! tail-exception! sink) start-daemon)
      :temp-dir temp-dir}))
 
-(defn proxy-handler [forward-port]
-  (http-proxy/create-handler
-   {:url (str "http://localhost:" forward-port)}))
+(defn review-processes-component []
+  #:donut.system
+   {:start (fn [_]
+             (atom {:processes {}}))
+    :stop (fn [{:donut.system/keys [instance]}]
+            (doseq [process (vals (:processes instance))]
+              (p/destroy-tree process))
+            nil)})
 
-(defn proxy-server [forward-port listen-port]
+(defn proxy-handler [get-url session-opts]
+  (fn [request]
+    (let [request (session/session-request request session-opts)]
+      ((http-proxy/create-handler
+        {:url (get-url request)})
+       request))))
+
+(defn proxy-server [get-url listen-port session-opts]
   (http-proxy/start-server
-   (proxy-handler forward-port)
+   (proxy-handler get-url session-opts)
    {:port listen-port}))
+
+(defn session-url [{:keys [session]}]
+  (:review-proxy-url session))
+
+(defn proxy-server-component [config]
+  #:donut.system
+   {:config config
+    :start (fn [{{:keys [listen-ports session-opts]} :donut.system/config}]
+             {:servers (->> listen-ports
+                            (map #(do [% (proxy-server session-url % session-opts)]))
+                            (into {}))})
+    :stop (fn [{:donut.system/keys [instance]}]
+            (doseq [server (vals (:servers instance))]
+              (.close server))
+            nil)})
