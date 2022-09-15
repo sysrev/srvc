@@ -1,0 +1,93 @@
+name: release
+on:
+  push:
+    branches:
+     - release
+    tags:
+    - "v[0-9]+.[0-9]+.[0-9]+"
+
+jobs:
+  create-release:
+    name: create-release
+    runs-on: ubuntu-latest
+    #env:
+      # Set to force version number, e.g., when no tag exists.
+    # PACKAGE_VERSION: TEST-0.0.6
+    outputs:
+      upload_url: ${{ steps.release.outputs.upload_url }}
+      package_version: ${{ env.PACKAGE_VERSION }}
+    steps:
+      - name: Get the release version from the tag
+        shell: bash
+        if: env.PACKAGE_VERSION == ''
+        run: |
+          # Apparently, this is the right way to get a tag name. Really?
+          #
+          # See: https://github.community/t5/GitHub-Actions/How-to-get-just-the-tag-name/m-p/32167/highlight/true#M1027
+          echo "PACKAGE_VERSION=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
+          echo "version is: ${{ env.PACKAGE_VERSION }}"
+
+      - name: Create GitHub release
+        id: release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ env.PACKAGE_VERSION }}
+          release_name: ${{ env.PACKAGE_VERSION }}
+
+  build-release:
+    name: build-release
+    needs: ['create-release']
+    runs-on: ubuntu-latest
+    env:
+      ASSET: srvc-server-${{ needs.create-release.outputs.package_version }}-standalone.jar
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+      with:
+        fetch-depth: 1
+
+    - name: Cache Clojure dependencies
+      uses: actions/cache@v3
+      with:
+        key: clj-srvc-${{ hashFiles('**/deps.edn') }}
+        restore-keys: clj-srvc-
+        path: |
+          ~/.gitlibs
+          ~/.m2/repository
+    - name: Install Nix
+      uses: cachix/install-nix-action@v17
+
+    - name: Cache Nix store
+      id: nix-cache
+      uses: john-shaffer/cache@sudo-tar
+      with:
+        key: nix-srvc-${{ hashFiles('**.nix') }}
+        restore-keys: |
+          nix-srvc-
+        path: |
+          ~/nix-db-dump
+          /nix/store
+          /nix/var/nix/profiles
+    - run: sudo `command -v nix-store` --load-db < ~/nix-db-dump
+      if: steps.nix-cache.outputs.cache-hit == 'true'
+
+    - run: nix-build default.nix -A inputDerivation -o gcroots
+
+    - name: Build uberjar
+      run: nix-shell --run "clojure -T:build uberjar :snapshot false"
+
+    - name: Upload release uberjar
+      uses: actions/upload-release-asset@v1.0.1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ needs.create-release.outputs.upload_url }}
+        asset_path: target/${{ env.ASSET }}
+        asset_name: ${{ env.ASSET }}
+        asset_content_type: application/octet-stream
+
+    - run: |
+        nix-store --dump-db > ~/nix-db-dump
+      if: steps.nix-cache.outputs.cache-hit != 'true'
