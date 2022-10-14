@@ -22,7 +22,7 @@
 
 (defn parse-json-body [{:keys [body] :as response}]
   (assoc response
-         :body (json/read (io/reader body) :key-fn keyword)))
+         :body (some-> body io/reader (json/read :key-fn keyword))))
 
 (defn json-get [request path]
   (let [{:keys [body status] :as response}
@@ -54,6 +54,19 @@
           (api-url request "/project")
           {:as :stream
            :body (json/write-str {:name name})
+           :headers {"Accept" "application/json"
+                     "Content-Type" "application/json"}
+           :timeout 5000}
+          parse-json-body)]
+    (when-not (and status (<= 200 status 299))
+      (throw (ex-info "Unexpected response" {:response response})))))
+
+(defn project-POST [request project-name path body]
+  (let [{:keys [status] :as response}
+        @(client/post
+          (api-url request (str "/project/" project-name path))
+          {:as :stream
+           :body (json/write-str body)
            :headers {"Accept" "application/json"
                      "Content-Type" "application/json"}
            :timeout 5000}
@@ -316,13 +329,16 @@
         form field
         (validate request form field (get params field-id)))))))
 
-(defn handle-tail-line [http-port-promise line]
-  (let [{:keys [data type]} (json/read-str line :key-fn keyword)
+(defn handle-tail-line [request project-name http-port-promise line]
+  (let [{:keys [data type] :as event} (json/read-str line :key-fn keyword)
         {:keys [http-port]} data]
-    (when (and http-port (= "control" type))
-      (deliver http-port-promise http-port))))
+    (if (= "control" type)
+      (when http-port
+        (deliver http-port-promise http-port))
+      (project-POST request project-name "/upload" [event]))))
 
-(defn load-review-process [{:keys [session]} review-processes project-name project-config flow-name]
+(defn load-review-process
+  [{:keys [session] :as request} review-processes project-name project-config flow-name]
   (let [{:keys [email]} session
         k [project-name flow-name email]]
     (or
@@ -332,7 +348,7 @@
                         project-name
                         project-config
                         flow-name
-                        (partial handle-tail-line http-port-promise)
+                        (partial handle-tail-line request project-name http-port-promise)
                         prn
                         (str "mailto:" (:email session)))
                        (assoc :http-port-promise http-port-promise))]

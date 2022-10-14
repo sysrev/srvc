@@ -83,21 +83,14 @@
              :db-file db-file
              :events events}))))
 
-(defn add-events! [dtm data-file events]
-  (locking write-lock
-    (with-open [writer (io/writer data-file :append true)]
+(defn add-events! [projects name events]
+  (let [{:keys [db-file] :as project} (load-project projects name)]
+    (with-open [writer (-> db-file fs/file (io/writer :append true))]
       (doseq [{:keys [hash] :as item} events]
-        (when-not (get (:by-hash @dtm) hash)
+        (when-not (get-in project [:events :by-hash hash])
           (json/write item writer)
           (.write writer "\n")
-          (swap! dtm add-data item))))))
-
-(defn handle-tail-line [dtm db http-port line]
-  (let [{:keys [data type] :as event} (json/read-str line :key-fn keyword)]
-    (if (= "control" type)
-      (when (:http-port data)
-        (deliver http-port (:http-port data)))
-      (add-events! dtm db [event]))))
+          (swap! projects update-in [name :events] add-data item))))))
 
 (defn get-documents [request projects]
   (let [{:keys [project-name]} (-> request ::re/match :path-params)
@@ -138,9 +131,9 @@
       {:body (-> events :doc-to-answers (get id))})))
 
 (defn upload [request projects]
-  (some->> request :body io/reader line-seq
-           (map #(json/read-str % :key-fn keyword))
-           #_(add-events! dtm data-file))
+  (let [{:keys [project-name]} (-> request ::re/match :path-params)]
+    (some->> request :body-params
+             (add-events! projects project-name)))
   success)
 
 (defn routes [{:keys [projects]}]
