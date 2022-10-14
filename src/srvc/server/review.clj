@@ -37,13 +37,16 @@
     (.setDaemon true)
     .start))
 
-(defn review-process [project-name config flow-name add-events! tail-exception!]
+(defn review-process [project-name config flow-name add-events! tail-exception! reviewer]
   (let [dir (fs/path project-name)
         db (some->> config :db (fs/path dir))
         temp-dir (fs/create-temp-dir)
         config-file (fs/path temp-dir (str "config-" (random-uuid) ".yaml"))
         sink (fs/path temp-dir (str "sink-" (random-uuid) ".jsonl"))
-        config (assoc config :db (str sink) :sink_all_events true)]
+        config (assoc config
+                      :db (str sink)
+                      :reviewer reviewer
+                      :sink_all_events true)]
     (with-open [writer (io/writer (fs/file config-file))]
       (yaml/generate-stream writer config))
     (when (fs/exists? db)

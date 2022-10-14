@@ -52,7 +52,7 @@
       :else system)))
 
 (defn get-config [filename]
-  (if-let [resource (io/resource filename)]
+  (if-let [resource (or (io/resource filename) (io/file filename))]
     (with-open [reader (-> resource io/reader java.io.PushbackReader.)]
       (try
         (edn/read reader)
@@ -111,6 +111,7 @@
      :config (config-component)
      :http-server (http-server-component
                    {:host (ds/local-ref [:config :host])
+                    :local-auth (ds/local-ref [:config :local-auth])
                     :port (ds/local-ref [:config :port])
                     :projects (ds/local-ref [:projects])
                     :proxy-config (ds/local-ref [:config :proxy])
@@ -132,8 +133,11 @@
 ;; Not thread-safe. For use by -main and at REPL
 #_:clj-kondo/ignore
 (defn stop! []
-  (swap! state #(when % (signal! % ::ds/stop) (reset! state nil))))
+  (swap! state #(when % (signal! % ::ds/stop) nil)))
 
 (defn -main []
   (start!)
   (Thread/sleep Long/MAX_VALUE))
+
+(comment
+  (do (stop!) (start!)))

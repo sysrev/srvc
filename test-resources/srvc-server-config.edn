@@ -1,4 +1,10 @@
 {:host "http://localhost:8090"
+ :local-auth
+ {:users
+  [{:email "user1@example.com"
+    :password "bcrypt+sha512$0b7cc3702249eb0af73b596d330c752a$12$bf5d3529c7c7659ce437f8fb3297de7f4f009611a0cfdda0"}
+   {:email "user2@example.com"
+    :password "bcrypt+sha512$60e6e89515e750e770ea9816c9d45234$12$1addd7512e6de4269a30be59fdb46e1dc7ac9c3eb4db15d1"}]}
  :port 8090
  :proxy
  {:host "localhost"

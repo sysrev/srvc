@@ -1,5 +1,6 @@
 {:paths ["resources" "src"]
  :deps {babashka/process {:mvn/version "0.1.7"}
+        buddy/buddy-hashers {:mvn/version "1.8.158"}
         clj-commons/clj-yaml {:mvn/version "0.7.108"}
         club.donutpower/system {:mvn/version "0.0.165"
                                 :exclusions [tailrecursion/cljs-priority-map]}
