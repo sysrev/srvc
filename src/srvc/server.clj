@@ -131,7 +131,6 @@
     (swap! state #(signal! (or % (system env)) ::ds/start))))
 
 ;; Not thread-safe. For use by -main and at REPL
-#_:clj-kondo/ignore
 (defn stop! []
   (swap! state #(when % (signal! % ::ds/stop) nil)))
 
